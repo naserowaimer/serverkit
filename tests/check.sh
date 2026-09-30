@@ -56,6 +56,16 @@ fi
 # grep -r skips symlinked files (nginx sites-enabled/*): always use -R
 if grep -nE 'grep -r[a-zA-Z]*[[:space:]]' lib/*.sh modules/*.sh; then bad "use grep -R, not grep -r (above)"; fi
 
+echo "workflows"
+if python3 -c 'import yaml' 2>/dev/null; then
+  for f in .github/workflows/*.yml; do
+    python3 -c 'import sys, yaml; yaml.safe_load(open(sys.argv[1]))' "$f" 2>/dev/null || bad "$f is not valid YAML"
+  done
+  [[ $fail -eq 0 ]] && good "workflow files parse"
+else
+  echo "  (python3-yaml not installed — skipped)"
+fi
+
 echo "catalog"
 # Load the real parser so the checks see exactly what serverkit sees.
 SK_ROOT=$ROOT

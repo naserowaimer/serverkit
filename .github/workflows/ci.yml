@@ -90,4 +90,7 @@ jobs:
       - run: ./serverkit doctor
       - run: ./serverkit apply --profile desktop --dry-run --yes
       - run: ./serverkit install ripgrep fd jq zsh-setup tmux-config git-defaults gnu-tools rectangle --yes --plain
-      - run: ./serverkit install ripgrep fd jq zsh-setup tmux-config git-defaults gnu-tools rectangle --yes --plain --verbose | tee second.log && ! grep -E '(created|updated): ' second.log
+      - name: second run changes nothing
+        run: |
+          ./serverkit install ripgrep fd jq zsh-setup tmux-config git-defaults gnu-tools rectangle --yes --plain --verbose | tee second.log
+          ! grep -E '(created|updated): ' second.log
