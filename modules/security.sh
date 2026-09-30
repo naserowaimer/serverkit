@@ -219,6 +219,8 @@ Wants=network-online.target
 After=network-online.target
 [Service]
 Type=oneshot
+# wait for another package manager instead of failing (zypper; dnf waits anyway)
+Environment=ZYPP_LOCK_TIMEOUT=600
 ExecStart=$cmd
 EOF
     safe_write /etc/systemd/system/serverkit-security-updates.timer 0644 <<EOF

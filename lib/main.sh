@@ -634,10 +634,11 @@ bootstrap_basics() {
   fi
   local ok=false
   case $PM in
-  apt) as_root env DEBIAN_FRONTEND=noninteractive apt-get update -q && as_root env DEBIAN_FRONTEND=noninteractive apt-get install -y -q "${pkgs[@]}" && ok=true ;;
+  apt) as_root env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 update -q &&
+    as_root env DEBIAN_FRONTEND=noninteractive apt-get -o DPkg::Lock::Timeout=600 install -y -q "${pkgs[@]}" && ok=true ;;
   dnf) as_root dnf -y -q install "${pkgs[@]}" && ok=true ;;
   pacman) as_root pacman -S --needed --noconfirm "${pkgs[@]}" && ok=true ;;
-  zypper) as_root zypper --non-interactive install "${pkgs[@]}" && ok=true ;;
+  zypper) as_root env ZYPP_LOCK_TIMEOUT=600 zypper --non-interactive install "${pkgs[@]}" && ok=true ;;
   esac
   $ok || die "could not install ${pkgs[*]} — install them yourself, then run serverkit again"
   hash -r

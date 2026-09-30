@@ -11,12 +11,26 @@ flag_set() { [[ -n $RUN_DIR ]] && touch "$RUN_DIR/.flag-$1"; }
 flag_has() { [[ -n $RUN_DIR && -e $RUN_DIR/.flag-$1 ]]; }
 
 APT_ENV=(env DEBIAN_FRONTEND=noninteractive NEEDRESTART_MODE=a APT_LISTCHANGES_FRONTEND=none)
+# Fresh servers run their own updater in the first minutes (unattended-upgrades,
+# packagekit…) and hold the package lock: wait for it instead of failing.
+APT_WAIT=(-o DPkg::Lock::Timeout=600)
+ZYPP_ENV=(env ZYPP_LOCK_TIMEOUT=600)
+pacman_wait() {
+  local i
+  for ((i = 0; i < 120; i++)); do
+    [[ -e /var/lib/pacman/db.lck ]] || return 0
+    ((i == 0)) && log "waiting for another pacman to finish…"
+    sleep 5
+  done
+  err "pacman is locked by another process (/var/lib/pacman/db.lck)"
+  return 1
+}
 
 pkg_refresh() {
   flag_has pkg-refreshed && return 0
   case "$PM" in
-  apt) as_root "${APT_ENV[@]}" apt-get update -q || return 1 ;;
-  zypper) as_root zypper --non-interactive --quiet refresh || return 1 ;;
+  apt) as_root "${APT_ENV[@]}" apt-get "${APT_WAIT[@]}" update -q || return 1 ;;
+  zypper) as_root "${ZYPP_ENV[@]}" zypper --non-interactive --quiet refresh || return 1 ;;
   # dnf refreshes stale metadata by itself. pacman: never -Sy on its own —
   # a partial upgrade breaks Arch; see pkg_install.
   esac
@@ -60,10 +74,11 @@ pkg_install() {
   [[ ${#want[@]} -gt 0 ]] || return 0
   log "installing: ${want[*]}"
   case "$PM" in
-  apt) as_root "${APT_ENV[@]}" apt-get install -y -q --no-install-recommends "${want[@]}" ;;
+  apt) as_root "${APT_ENV[@]}" apt-get "${APT_WAIT[@]}" install -y -q --no-install-recommends "${want[@]}" ;;
   dnf) as_root dnf -y -q install --setopt=install_weak_deps=False "${want[@]}" ;;
-  zypper) as_root zypper --non-interactive install --no-recommends "${want[@]}" ;;
+  zypper) as_root "${ZYPP_ENV[@]}" zypper --non-interactive install --no-recommends "${want[@]}" ;;
   pacman)
+    pacman_wait || return 1
     as_root pacman -S --needed --noconfirm "${want[@]}" || {
       err "pacman could not install ${want[*]} — if it reported 404s, your package database is stale."
       hint "update Arch first (never partially): sudo pacman -Syu   then re-run serverkit"
@@ -140,8 +155,8 @@ repo_rpm() { # name https://…/file.repo
       skip "a ${host#https://} repository is already configured — using it"
       return 0
     fi
-    as_root zypper --non-interactive addrepo --refresh "$url" &&
-      as_root zypper --non-interactive --gpg-auto-import-keys refresh
+    as_root "${ZYPP_ENV[@]}" zypper --non-interactive addrepo --refresh "$url" &&
+      as_root "${ZYPP_ENV[@]}" zypper --non-interactive --gpg-auto-import-keys refresh
     ;;
   *) return 1 ;;
   esac
