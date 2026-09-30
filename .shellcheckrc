@@ -1,0 +1,6 @@
+# Globals are shared across the sourced files (lib/*.sh, modules/*.sh), and
+# shellcheck checks one file at a time, so it can't see them used or assigned.
+disable=SC2034,SC2154
+# Libraries and modules are sourced by path at runtime.
+disable=SC1090,SC1091
+external-sources=true

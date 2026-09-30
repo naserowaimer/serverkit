@@ -1,0 +1,93 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  schedule:
+    - cron: "17 5 * * 1" # weekly: catch renamed/removed Homebrew and Flathub packages
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    name: lint + catalog
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update -q && sudo apt-get install -y -q shellcheck jq
+      - run: tests/check.sh --online
+
+  unit:
+    name: unit tests
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: git clone --depth 1 --branch v1.14.0 https://github.com/bats-core/bats-core.git /tmp/bats
+      - run: /tmp/bats/bin/bats tests/unit
+
+  distros:
+    name: ${{ matrix.image }}
+    needs: check
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image:
+          - ubuntu:22.04
+          - ubuntu:24.04
+          - debian:12
+          - debian:13
+          - fedora:latest
+          - rockylinux/rockylinux:9
+          - almalinux:10
+          - amazonlinux:2023
+          - archlinux:latest
+          - manjarolinux/base:latest
+          - opensuse/leap:15.6
+          - opensuse/tumbleweed:latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: PHASE=full tests/distro/run.sh "${{ matrix.image }}"
+      - if: failure()
+        run: cat /tmp/tmp.*/*.log
+
+  # A real, disposable VM with systemd: every system item runs for real,
+  # including firewall, sshd, fail2ban and the timers — then again to prove
+  # the second run changes nothing.
+  vm-ubuntu:
+    name: real run on an Ubuntu VM
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install (apps profile, minus items that need a real cloud account)
+        run: ./serverkit apply --profile apps --skip tailscale,cloudflared --yes --plain
+      - name: second run changes nothing
+        run: |
+          ./serverkit apply --profile apps --skip tailscale,cloudflared --yes --plain --verbose | tee second.log
+          ! grep -E '(created|updated): ' second.log
+      - name: services are healthy and SSH still works
+        run: |
+          sudo sshd -t
+          systemctl is-active fail2ban nginx docker
+          sudo ufw status | grep -q 'Status: active'
+          sudo ufw status | grep -q '22/tcp'
+          ./serverkit health
+          ./serverkit status
+
+  macos:
+    name: real run on macOS (${{ matrix.os }})
+    needs: check
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - run: ./serverkit doctor
+      - run: ./serverkit apply --profile desktop --dry-run --yes
+      - run: ./serverkit install ripgrep fd jq zsh-setup tmux-config git-defaults gnu-tools rectangle --yes --plain
+      - run: ./serverkit install ripgrep fd jq zsh-setup tmux-config git-defaults gnu-tools rectangle --yes --plain --verbose | tee second.log && ! grep -E '(created|updated): ' second.log

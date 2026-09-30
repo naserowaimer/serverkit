@@ -1,0 +1,213 @@
+# ==============================================================================
+#  serverkit catalog — every installable item. Data only; no code.
+#
+#  id | category | name | description | install | needs
+#
+#  install: space-separated TARGET=KIND:ARG, most specific target wins:
+#     TARGET  a distro id (amzn, rocky…) > debian rhel arch suse (family)
+#             > linux mac (OS) > all
+#     KIND    brew:formula[,formula]   Homebrew formulae (as the user)
+#             cask:token               macOS app via Homebrew
+#             flatpak:app.id           Linux desktop app from Flathub (per user)
+#             npm:package              global npm package (node from mise)
+#             pkg:name[,name]          native package (apt/dnf/pacman/zypper)
+#             sys:function             system function in modules/ (uses sudo)
+#             fn:function              user function in modules/
+#             builtin:what             already part of this OS; nothing to do
+#             none:why                 not available on that target
+#  needs: other ids installed first (brew/cask -> homebrew, flatpak -> flatpak
+#         and npm -> runtimes are added automatically).
+#
+#  Order matters: items install top to bottom, so dependencies come first.
+#  `tests/check.sh` verifies every brew/cask name against Homebrew's index,
+#  every flatpak id against Flathub, and that no item needs a later one.
+# ==============================================================================
+
+@cat base|Base system
+@cat security|Security
+@cat containers|Containers & Kubernetes
+@cat remote|Remote access & networking
+@cat web|Web hosting
+@cat storage|Storage & backups
+@cat users|Users & sharing
+@cat langs|Languages & runtimes
+@cat shell|Shell & terminal
+@cat cli|Command-line essentials
+@cat dev|Developer tools
+@cat cloud|Cloud & infrastructure
+@cat db|Database clients
+@cat ai|AI coding agents
+@cat desktop|Desktop apps
+
+# ---- base -----------------------------------------------------------------------
+essentials|base|Essentials|curl git zsh tmux unzip and network time sync|linux=sys:essentials mac=builtin:macOS|
+homebrew|base|Homebrew|package manager for user tools on macOS and Linux|all=fn:homebrew|
+flatpak|base|Flatpak + Flathub|app store for Linux desktop apps|linux=sys:flatpak|
+
+# ---- security -------------------------------------------------------------------
+firewall|security|Firewall|block inbound traffic except SSH (ufw / firewalld / macOS firewall)|linux=sys:firewall mac=sys:mac_firewall|
+ssh-hardening|security|SSH hardening|safer sshd settings, validated before reload; never locks you out|linux=sys:ssh_hardening|
+fail2ban|security|Fail2ban|ban addresses that brute-force SSH|linux=sys:fail2ban|
+auto-updates|security|Automatic security updates|install security patches daily (no surprise reboots)|debian=sys:auto_updates rhel=sys:auto_updates suse=sys:auto_updates|
+kernel-hardening|security|Kernel hardening|sysctl protections against spoofing and info leaks|linux=sys:kernel_hardening|
+user-limits|security|Per-user resource caps|stop one login user from starving the machine|linux=sys:user_limits|
+trivy|security|Trivy|scan images, repos and filesystems for vulnerabilities|all=brew:trivy|
+age|security|age|simple, modern file encryption|all=brew:age|
+sops|security|sops|encrypted secrets in git|all=brew:sops|
+
+# ---- containers -----------------------------------------------------------------
+docker|containers|Docker|Engine + Compose on Linux; Colima + Docker CLI on macOS|linux=sys:docker mac=fn:docker_mac|
+podman|containers|Podman|daemonless, rootless containers|linux=pkg:podman mac=brew:podman amzn=none:unpackaged|
+lazydocker|containers|lazydocker|terminal UI for Docker|all=brew:lazydocker|
+dive|containers|dive|explore container image layers|all=brew:dive|
+k3s|containers|k3s|lightweight single-node Kubernetes|linux=sys:k3s|
+kubectl|containers|kubectl|Kubernetes command line|all=brew:kubernetes-cli|
+helm|containers|Helm|Kubernetes package manager|all=brew:helm|
+k9s|containers|k9s|Kubernetes terminal UI|all=brew:k9s|
+kubectx|containers|kubectx + kubens|switch clusters and namespaces|all=brew:kubectx|
+kind|containers|kind|local Kubernetes clusters in Docker|all=brew:kind|
+
+# ---- remote ---------------------------------------------------------------------
+tailscale|remote|Tailscale|private mesh VPN; reach this machine from anywhere|linux=sys:tailscale mac=cask:tailscale-app|
+cloudflared|remote|Cloudflare Tunnel|publish web apps with no open ports|linux=sys:cloudflared mac=brew:cloudflared|
+code-server|remote|code-server|VS Code in the browser, bound to localhost|linux=sys:code_server|
+mosh|remote|mosh|SSH that survives sleep and roaming|linux=pkg:mosh mac=brew:mosh amzn=none:unpackaged|
+wireguard|remote|WireGuard tools|wg and wg-quick|linux=pkg:wireguard-tools mac=brew:wireguard-tools|
+mtr|remote|mtr|traceroute and ping in one|debian=pkg:mtr-tiny rhel=pkg:mtr arch=pkg:mtr suse=pkg:mtr mac=brew:mtr|
+nmap|remote|nmap|network scanner|all=brew:nmap|
+
+# ---- web ------------------------------------------------------------------------
+nginx|web|nginx|web server; unknown hosts get 404; tokens hidden|linux=sys:nginx_web|
+
+# ---- storage --------------------------------------------------------------------
+disk-health|storage|Disk health|SMART self-tests + RAID monitoring (physical machines)|linux=sys:disk_health|
+zfs-care|storage|ZFS snapshots & scrub|hourly rolling snapshots + monthly scrub for existing pools|linux=sys:zfs_care|
+backups|storage|Backups (restic)|scheduled, encrypted backups to another machine or cloud|linux=sys:backups mac=brew:restic amzn=none:unpackaged|
+rclone|storage|rclone|sync files with 70+ cloud storage providers|all=brew:rclone|
+
+# ---- users ----------------------------------------------------------------------
+admin-user|users|Admin user|fresh server with only root: create a sudo user with root's SSH keys|linux=sys:admin_user|
+shared-users|users|Shared users|team group, per-user directories, add-dev-user helper|linux=sys:shared_users|
+
+# ---- languages ------------------------------------------------------------------
+runtimes|langs|mise + runtimes|Node, Python, Go with per-project versions (mise)|all=fn:runtimes|homebrew
+rust|langs|Rust|official rustup toolchain|all=fn:rustup|
+uv|langs|uv|fast Python packages, venvs and tools|all=brew:uv|
+bun|langs|Bun|fast JavaScript runtime and package manager|all=brew:bun|
+deno|langs|Deno|secure JavaScript/TypeScript runtime|all=brew:deno|
+pnpm|langs|pnpm|efficient Node package manager|all=brew:pnpm|
+pipx|langs|pipx|install Python apps in isolated envs|all=brew:pipx|
+
+# ---- shell ----------------------------------------------------------------------
+starship|shell|Starship|fast, informative prompt|all=brew:starship|
+zsh-setup|shell|Zsh setup|autosuggestions, syntax highlighting, completions, history|all=fn:zsh_setup|homebrew,starship
+tmux-config|shell|tmux + config|vim copy mode, clipboard over SSH, fuzzy scrollback|all=fn:tmux_config|homebrew
+ssh-autotmux|shell|SSH auto-tmux + banner|every SSH login lands in tmux, with escape hatches|all=fn:login_banner|zsh-setup,tmux-config
+lazyvim|shell|Neovim + LazyVim|modern Neovim setup (never replaces an existing config)|all=fn:lazyvim|homebrew
+git-defaults|shell|Git defaults|main branch, rebase on pull, delta diffs — keeps your settings|all=fn:git_defaults|
+nerd-font|shell|JetBrains Mono Nerd Font|programming font with icons|mac=cask:font-jetbrains-mono-nerd-font linux=fn:nerd_font|
+atuin|shell|Atuin|searchable, synced shell history|all=brew:atuin|
+zoxide|shell|zoxide|smarter cd that learns your directories|all=brew:zoxide|
+direnv|shell|direnv|per-directory environment variables|all=brew:direnv|
+zellij|shell|Zellij|terminal workspace with layouts|all=brew:zellij|
+
+# ---- cli ------------------------------------------------------------------------
+ripgrep|cli|ripgrep|very fast recursive search (rg)|all=brew:ripgrep|
+fd|cli|fd|simple, fast find|all=brew:fd|
+bat|cli|bat|cat with syntax highlighting|all=brew:bat|
+fzf|cli|fzf|fuzzy finder for anything|all=brew:fzf|
+eza|cli|eza|modern ls with git and icons|all=brew:eza|
+jq|cli|jq|JSON processor|all=brew:jq|
+yq|cli|yq|YAML/JSON/TOML processor|all=brew:yq|
+tree|cli|tree|directory tree view|all=brew:tree|
+htop|cli|htop|interactive process viewer|all=brew:htop|
+btop|cli|btop|resource monitor|all=brew:btop|
+ncdu|cli|ncdu|disk usage explorer|all=brew:ncdu|
+duf|cli|duf|disk free, readable|all=brew:duf|
+dust|cli|dust|du, visual|all=brew:dust|
+tldr|cli|tldr|short, practical man pages|all=brew:tealdeer|
+delta|cli|delta|beautiful git diffs|all=brew:git-delta|
+lazygit|cli|lazygit|terminal UI for git|all=brew:lazygit|
+httpie|cli|HTTPie|friendly HTTP client|all=brew:httpie|
+xh|cli|xh|fast HTTPie-compatible client|all=brew:xh|
+hyperfine|cli|hyperfine|command benchmarking|all=brew:hyperfine|
+tokei|cli|tokei|count lines of code|all=brew:tokei|
+procs|cli|procs|modern ps|all=brew:procs|
+sd|cli|sd|intuitive find and replace|all=brew:sd|
+glow|cli|glow|render Markdown in the terminal|all=brew:glow|
+yazi|cli|yazi|terminal file manager|all=brew:yazi|
+fastfetch|cli|fastfetch|system information at a glance|all=brew:fastfetch|
+lnav|cli|lnav|log file navigator|all=brew:lnav|
+wget|cli|wget|download files|all=brew:wget|
+gnu-tools|cli|GNU tools|coreutils, sed, grep, findutils, awk (GNU versions for macOS)|mac=brew:coreutils,gnu-sed,grep,findutils,gawk|
+
+# ---- dev ------------------------------------------------------------------------
+gh|dev|GitHub CLI|pull requests, issues and Actions from the terminal|all=brew:gh|
+glab|dev|GitLab CLI|merge requests and pipelines from the terminal|all=brew:glab|
+git-lfs|dev|Git LFS|large files in git|all=brew:git-lfs|
+just|dev|just|project command runner|all=brew:just|
+watchexec|dev|watchexec|re-run commands when files change|all=brew:watchexec|
+shellcheck|dev|ShellCheck|shell script linter|all=brew:shellcheck|
+shfmt|dev|shfmt|shell script formatter|all=brew:shfmt|
+pre-commit|dev|pre-commit|git hook manager|all=brew:pre-commit|
+act|dev|act|run GitHub Actions locally|all=brew:act|
+hadolint|dev|hadolint|Dockerfile linter|all=brew:hadolint|
+cmake|dev|CMake|build system generator|all=brew:cmake|
+
+# ---- cloud ----------------------------------------------------------------------
+awscli|cloud|AWS CLI|Amazon Web Services|all=brew:awscli|
+azure-cli|cloud|Azure CLI|Microsoft Azure|all=brew:azure-cli|
+gcloud|cloud|Google Cloud CLI|Google Cloud (macOS)|mac=cask:gcloud-cli|
+opentofu|cloud|OpenTofu|open-source infrastructure as code (Terraform-compatible)|all=brew:opentofu|
+ansible|cloud|Ansible|configuration management over SSH|all=brew:ansible|
+flyctl|cloud|flyctl|Fly.io|all=brew:flyctl|
+doctl|cloud|doctl|DigitalOcean|all=brew:doctl|
+hcloud|cloud|hcloud|Hetzner Cloud|all=brew:hcloud|
+
+# ---- db -------------------------------------------------------------------------
+psql|db|psql|PostgreSQL client (no server)|all=fn:psql|homebrew
+pgcli|db|pgcli|PostgreSQL client with autocompletion|all=brew:pgcli|
+mycli|db|mycli|MySQL/MariaDB client with autocompletion|all=brew:mycli|
+litecli|db|litecli|SQLite client with autocompletion|all=brew:litecli|
+sqlite|db|SQLite CLI|sqlite3 shell|debian=pkg:sqlite3 rhel=pkg:sqlite arch=pkg:sqlite suse=pkg:sqlite3 mac=builtin:sqlite3|
+
+# ---- ai -------------------------------------------------------------------------
+claude-code|ai|Claude Code|Anthropic's coding agent (official installer)|all=fn:claude_code|
+opencode|ai|opencode|open-source terminal coding agent|all=brew:opencode|
+aider|ai|aider|AI pair programming in your terminal|all=brew:aider|
+codex|ai|Codex CLI|OpenAI's coding agent|mac=cask:codex linux=npm:@openai/codex|
+gemini|ai|Gemini CLI|Google's coding agent|all=npm:@google/gemini-cli|
+copilot|ai|GitHub Copilot CLI|GitHub's coding agent|mac=cask:copilot-cli linux=npm:@github/copilot|
+
+# ---- desktop --------------------------------------------------------------------
+ghostty|desktop|Ghostty|fast, native terminal (macOS)|mac=cask:ghostty|
+iterm2|desktop|iTerm2|feature-rich terminal (macOS)|mac=cask:iterm2|
+wezterm|desktop|WezTerm|GPU terminal with multiplexing|mac=cask:wezterm linux=flatpak:org.wezfurlong.wezterm|
+vscode|desktop|Visual Studio Code|code editor|mac=cask:visual-studio-code linux=flatpak:com.visualstudio.code|
+cursor|desktop|Cursor|AI code editor (macOS)|mac=cask:cursor|
+zed|desktop|Zed|fast collaborative editor|mac=cask:zed linux=flatpak:dev.zed.Zed|
+firefox|desktop|Firefox|web browser|mac=cask:firefox linux=flatpak:org.mozilla.firefox|
+chrome|desktop|Google Chrome|web browser|mac=cask:google-chrome linux=flatpak:com.google.Chrome|
+brave|desktop|Brave|privacy web browser|mac=cask:brave-browser linux=flatpak:com.brave.Browser|
+obsidian|desktop|Obsidian|Markdown notes|mac=cask:obsidian linux=flatpak:md.obsidian.Obsidian|
+slack|desktop|Slack|team chat|mac=cask:slack linux=flatpak:com.slack.Slack|
+discord|desktop|Discord|voice and chat|mac=cask:discord linux=flatpak:com.discordapp.Discord|
+telegram|desktop|Telegram|messaging|mac=cask:telegram linux=flatpak:org.telegram.desktop|
+signal|desktop|Signal|private messaging|mac=cask:signal linux=flatpak:org.signal.Signal|
+zoom|desktop|Zoom|video meetings|mac=cask:zoom linux=flatpak:us.zoom.Zoom|
+bitwarden|desktop|Bitwarden|password manager|mac=cask:bitwarden linux=flatpak:com.bitwarden.desktop|
+1password|desktop|1Password|password manager (macOS)|mac=cask:1password|
+dbeaver|desktop|DBeaver|database GUI|mac=cask:dbeaver-community linux=flatpak:io.dbeaver.DBeaverCommunity|
+postman|desktop|Postman|API client|mac=cask:postman linux=flatpak:com.getpostman.Postman|
+bruno|desktop|Bruno|offline, git-friendly API client|mac=cask:bruno linux=flatpak:com.usebruno.Bruno|
+vlc|desktop|VLC|media player|mac=cask:vlc linux=flatpak:org.videolan.VLC|
+spotify|desktop|Spotify|music|mac=cask:spotify linux=flatpak:com.spotify.Client|
+orbstack|desktop|OrbStack|fast Docker and Linux VMs (macOS)|mac=cask:orbstack|
+docker-desktop|desktop|Docker Desktop|Docker's desktop app (macOS; license terms apply)|mac=cask:docker-desktop|
+rectangle|desktop|Rectangle|window snapping (macOS)|mac=cask:rectangle|
+raycast|desktop|Raycast|launcher and productivity (macOS)|mac=cask:raycast|
+stats|desktop|Stats|system monitor in the menu bar (macOS)|mac=cask:stats|
+maccy|desktop|Maccy|clipboard history (macOS)|mac=cask:maccy|
+the-unarchiver|desktop|The Unarchiver|opens any archive (macOS)|mac=cask:the-unarchiver|
+utm|desktop|UTM|virtual machines (macOS)|mac=cask:utm|
+flatseal|desktop|Flatseal|manage Flatpak permissions|linux=flatpak:com.github.tchx84.Flatseal|
