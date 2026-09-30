@@ -15,26 +15,45 @@ item_docker() {
     _docker_install || return 1
   fi
 
-  local swarm=false
-  grep -q active <<<"$(as_root_q docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null)" && swarm=true
-  safe_write /etc/docker/daemon.json 0644 < <(
-    echo "{"
-    echo "  \"_comment\": \"$MARKER\","
-    echo "  \"log-driver\": \"json-file\","
-    echo "  \"log-opts\": { \"max-size\": \"$DOCKER_LOG_MAX_SIZE\", \"max-file\": \"$DOCKER_LOG_MAX_FILE\" },"
-    [[ -n $DOCKER_ADDRESS_POOL ]] && echo "  \"default-address-pools\": [ { \"base\": \"$DOCKER_ADDRESS_POOL\", \"size\": 24 } ],"
-    # live-restore keeps containers up across daemon restarts; Swarm forbids it
-    if $swarm; then echo "  \"live-restore\": false"; else echo "  \"live-restore\": true"; fi
-    echo "}"
-  )
+  # daemon.json is JSON: no comment marker possible (dockerd rejects unknown
+  # keys), so ownership is tracked by checksum. Settings the service already
+  # passes as command-line flags are left out — duplicates stop dockerd.
+  local swarm=false flags
+  [[ $(as_root_q docker info --format '{{.Swarm.LocalNodeState}}' 2>/dev/null) == active ]] && swarm=true
+  flags=$(systemctl show -p ExecStart --value docker 2>/dev/null)
+  local keys=()
+  [[ $flags == *--log-driver* ]] || keys+=("\"log-driver\": \"json-file\"")
+  [[ $flags == *--log-opt* ]] || keys+=("\"log-opts\": { \"max-size\": \"$DOCKER_LOG_MAX_SIZE\", \"max-file\": \"$DOCKER_LOG_MAX_FILE\" }")
+  [[ -n $DOCKER_ADDRESS_POOL && $flags != *--default-address-pool* ]] &&
+    keys+=("\"default-address-pools\": [ { \"base\": \"$DOCKER_ADDRESS_POOL\", \"size\": 24 } ]")
+  # live-restore keeps containers up across daemon restarts; Swarm forbids it
+  [[ $flags == *--live-restore* ]] || keys+=("\"live-restore\": $($swarm && echo false || echo true)")
+  local json="{" k
+  for k in "${keys[@]}"; do json+=$'\n'"  $k,"; done
+  json="${json%,}"$'\n'"}"
+  if ! $DRY_RUN && have dockerd; then
+    local tmp
+    tmp=$(umask 077 && mktemp "$(sk_tmpdir)/daemon.XXXXXX")
+    printf '%s\n' "$json" >"$tmp"
+    # --validate exists since Docker 23; older versions just skip this check
+    if as_root dockerd --validate --config-file "$tmp" >/dev/null 2>"$tmp.err"; then :; elif grep -q 'unknown flag' "$tmp.err"; then :; else
+      err "dockerd rejects the new daemon.json — nothing changed: $(tail -n 1 "$tmp.err")"
+      return 1
+    fi
+  fi
+  safe_write /etc/docker/daemon.json 0644 <<<"$json"
   local changed=$SW_CHANGED
   svc_enable docker || return 1
-  if $changed && ! $DRY_RUN; then
+  if $changed && ! $DRY_RUN && $HAS_SYSTEMD; then
     if [[ -n $(as_root_q docker ps -q 2>/dev/null) ]]; then
       svc_reload docker
       hint "Docker's daemon.json changed while containers were running — log settings apply after 'sudo systemctl restart docker' (briefly restarts them)"
-    else
+    elif ! svc_restart docker || ! svc_active docker; then
+      restore_file /etc/docker/daemon.json
+      as_root systemctl reset-failed docker >/dev/null 2>&1
       svc_restart docker
+      err "Docker failed to start with the new daemon.json — restored the previous state$(svc_active docker && echo "; Docker is running again")"
+      return 1
     fi
   fi
 
@@ -93,7 +112,6 @@ item_docker_mac() {
   if [[ ! -e $cfg ]]; then
     safe_write "$cfg" 0600 <<EOF
 {
-  "_comment": "$MARKER",
   "cliPluginsExtraDirs": ["$plugdir"]
 }
 EOF

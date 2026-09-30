@@ -39,7 +39,7 @@ fi
 echo "pipefail hazards"
 # `cmd | grep -q` under pipefail: grep exits at the first match, cmd dies of
 # SIGPIPE, and the check randomly reports "not found". Use grep … <<<"$(cmd)".
-if grep -nE '(^|[^|])\|[[:space:]]*grep -q' lib/*.sh modules/*.sh tests/distro/*.bash; then
+if grep -nE '(^|[^|])\|[[:space:]]*grep (-q|[^|]*>[[:space:]]*/dev/null)' lib/*.sh modules/*.sh tests/distro/*.bash; then
   bad "pipe into grep -q (above) — use: grep -q PATTERN <<<\"\$(cmd)\""
 else
   good "no pipe-into-grep -q"

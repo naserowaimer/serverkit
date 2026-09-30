@@ -101,3 +101,21 @@ bad"
   ensure_block "$F" demo <<<"x"
   cmp "$F" "$F.first"
 }
+
+@test "a file without a marker (JSON) is ours while it matches the recorded checksum" {
+  J="$TARGET_HOME/daemon.json"
+  safe_write "$J" <<<'{ "a": 1 }'
+  ! grep -q "$MARKER" "$J"
+  safe_write "$J" <<<'{ "a": 2 }'
+  grep -q '"a": 2' "$J"
+  [ ! -e "$J.new" ]
+}
+
+@test "once you edit an unmarked file, it's yours again" {
+  J="$TARGET_HOME/daemon.json"
+  safe_write "$J" <<<'{ "a": 1 }'
+  echo '{ "mine": true }' >"$J"
+  safe_write "$J" <<<'{ "a": 2 }'
+  grep -q mine "$J"
+  grep -q '"a": 2' "$J.new"
+}

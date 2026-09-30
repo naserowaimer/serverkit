@@ -248,7 +248,30 @@ _read() {
   is_root || sudo -n cat "$1" 2>/dev/null
 }
 
-is_ours() { grep -qF "$MARKER" <<<"$(_read "$1")"; }
+# A file is ours if it carries the marker — or, for formats that can't hold a
+# comment (JSON), if it still matches the checksum recorded when we wrote it.
+# Edited since? Then it's yours again, and we leave it alone.
+sha256_str() {
+  if have sha256sum; then printf '%s\n' "$1" | sha256sum | awk '{print $1}'; else printf '%s\n' "$1" | shasum -a 256 | awk '{print $1}'; fi
+}
+_sums_file() {
+  if [[ $(_owner_of_path "$1") == user ]]; then echo "$STATE_DIR/checksums"; else echo /etc/serverkit/checksums; fi
+}
+is_ours() {
+  local cur
+  cur=$(_read "$1") || return 1
+  grep -qF "$MARKER" <<<"$cur" && return 0
+  grep -qxF "$(sha256_str "$cur")  $1" <<<"$(_read "$(_sums_file "$1")" 2>/dev/null)"
+}
+_record_sum() { # path content
+  $DRY_RUN && return 0
+  local f o lines
+  f=$(_sums_file "$1")
+  o=$(_owner_of_path "$f")
+  lines=$(_read "$f" 2>/dev/null | awk -v p="$1" '{ q = $0; sub(/^[^ ]+  /, "", q) } q != p')
+  lines+=$'\n'"$(sha256_str "$2")  $1"
+  _install_content "$o" "$f" 0644 "$(sed '/^$/d' <<<"$lines")"
+}
 
 track() {
   [[ -n $STATE_DIR ]] || return 0
@@ -299,6 +322,7 @@ safe_write() {
       else
         _as_owner "$o" cp -p "$path" "${path}.bak.${STAMP}" || return 1
         _install_content "$o" "$path" "$mode" "$content" || return 1
+        _record_sum "$path" "$content"
         ok "updated: $path  (previous: ${path}.bak.${STAMP})"
       fi
       SW_CHANGED=true
@@ -313,6 +337,7 @@ safe_write() {
   else
     if $DRY_RUN; then log "would create: $path"; else
       _install_content "$o" "$path" "$mode" "$content" || return 1
+      _record_sum "$path" "$content"
       ok "created: $path"
     fi
     SW_CHANGED=true

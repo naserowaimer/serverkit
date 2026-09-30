@@ -117,12 +117,23 @@ ClientAliveCountMax 3
 X11Forwarding no
 EOF
   $SW_CHANGED && ! $DRY_RUN || return 0
-  if as_root "$sshd" -t; then
+  local out privsep
+  out=$(as_root "$sshd" -t 2>&1)
+  # Socket-activated sshd (Ubuntu 24.04+) creates its runtime dir only when it
+  # first starts, and `sshd -t` refuses to run without it. Create it as systemd
+  # would (RuntimeDirectory), then test again.
+  privsep=$(sed -n 's/^Missing privilege separation directory: //p' <<<"$out")
+  if [[ -n $privsep ]]; then
+    as_root install -d -m 0755 "$privsep"
+    out=$(as_root "$sshd" -t 2>&1)
+  fi
+  if [[ -z $out ]]; then
     if svc_exists ssh; then svc_reload ssh; else svc_reload sshd; fi
     ok "sshd reloaded — existing sessions are unaffected"
   else
     restore_file /etc/ssh/sshd_config.d/10-serverkit.conf
-    err "sshd rejected the new settings — rolled back, sshd untouched"
+    printf '%s\n' "$out" >>"$LOG"
+    err "sshd rejected the new settings — rolled back, sshd untouched: $(head -n 1 <<<"$out")"
     return 1
   fi
 }
