@@ -11,7 +11,7 @@ step() { printf '\n=== %s\n' "$*"; }
 step "prepare $PRETTY_NAME"
 case " $ID ${ID_LIKE:-} " in
 *" debian "* | *" ubuntu "*)
-  apt-get update -qq
+  apt-get update -qq || { sleep 10; apt-get update -qq; }
   DEBIAN_FRONTEND=noninteractive apt-get install -y -qq sudo curl ca-certificates procps >/dev/null
   ;;
 *" fedora "* | *" rhel "* | *" centos "* | *" amzn "*)
@@ -24,7 +24,8 @@ case " $ID ${ID_LIKE:-} " in
   pacman -Syu --noconfirm --needed sudo curl >/dev/null
   ;;
 *" suse "* | *" opensuse "*)
-  zypper -n -q refresh >/dev/null
+  # mirrors hiccup now and then: retry, and carry on with what refreshed
+  zypper -n -q refresh >/dev/null 2>&1 || { sleep 10; zypper -n -q refresh >/dev/null 2>&1; } || true
   zypper -n -q install sudo curl gzip tar >/dev/null
   ;;
 esac
