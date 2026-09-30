@@ -51,7 +51,7 @@ About 140 items in 15 groups — run `serverkit list` to see what your machine o
 | Fedora, RHEL, Rocky, Alma, CentOS Stream, Oracle, Amazon Linux 2023 | dnf (+ EPEL where needed) | Homebrew |
 | Arch, Manjaro, EndeavourOS, Garuda, CachyOS | pacman | Homebrew |
 | openSUSE Leap / Tumbleweed, SLES | zypper | Homebrew |
-| macOS 13+ (Apple silicon and Intel) | macOS firewall | Homebrew + casks |
+| macOS versions Homebrew supports — currently 15 and newer (Apple silicon and Intel) | macOS firewall | Homebrew + casks |
 | Image-based (Silverblue, Bazzite, MicroOS…), other glibc Linux | — | Homebrew + Flathub |
 
 **Homebrew is the source of everyday tools on every platform**, so the same

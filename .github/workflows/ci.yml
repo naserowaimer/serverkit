@@ -83,7 +83,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [macos-14, macos-15]
+        # the macOS versions Homebrew supports (older ones build from source)
+        os: [macos-15, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4

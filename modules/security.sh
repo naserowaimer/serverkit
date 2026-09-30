@@ -118,14 +118,15 @@ X11Forwarding no
 EOF
   $SW_CHANGED && ! $DRY_RUN || return 0
   local out privsep
-  out=$(as_root "$sshd" -t 2>&1)
+  # sshd ends its messages with \r\n: strip the \r before parsing
+  out=$(as_root "$sshd" -t 2>&1 | tr -d '\r')
   # Socket-activated sshd (Ubuntu 24.04+) creates its runtime dir only when it
   # first starts, and `sshd -t` refuses to run without it. Create it as systemd
   # would (RuntimeDirectory), then test again.
   privsep=$(sed -n 's/^Missing privilege separation directory: //p' <<<"$out")
   if [[ -n $privsep ]]; then
     as_root install -d -m 0755 "$privsep"
-    out=$(as_root "$sshd" -t 2>&1)
+    out=$(as_root "$sshd" -t 2>&1 | tr -d '\r')
   fi
   if [[ -z $out ]]; then
     if svc_exists ssh; then svc_reload ssh; else svc_reload sshd; fi

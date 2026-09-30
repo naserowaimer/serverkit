@@ -94,7 +94,24 @@ brew_install() {
   [[ ${#want[@]} -gt 0 ]] || return 0
   brew_update_once
   log "brew install ${want[*]}"
-  brew_run install --formula "${want[@]}"
+  $DRY_RUN && {
+    brew_run install --formula "${want[@]}"
+    return 0
+  }
+  local out rc
+  out=$(brew_run install --formula "${want[@]}" 2>&1)
+  rc=$?
+  printf '%s\n' "$out"
+  [[ $rc -eq 0 ]] && return 0
+  brew_explain "$out"
+  return 1
+}
+
+# Show Homebrew's own reason and advice, not just "see the log".
+brew_explain() {
+  local why
+  why=$(grep -E '^Error:|Could not symlink|is a symlink belonging to|brew unlink|We do not provide support|No available formula' <<<"$1" | head -n 4)
+  err "Homebrew failed${why:+: }$(printf '%s' "$why" | tr '\n' ' ')"
 }
 
 # brew_cask NAME... — macOS apps. An app already in /Applications counts as done.
@@ -121,7 +138,7 @@ brew_cask() {
       if grep -q "already an App at" <<<"$out"; then
         skip "$c: the app is already installed (outside Homebrew)"
       else
-        err "brew could not install $c"
+        brew_explain "$out"
         return 1
       fi
     fi
