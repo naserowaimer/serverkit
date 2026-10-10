@@ -161,9 +161,12 @@ for f in files/* files/win/*; do
   grep -qF "managed-by:serverkit" "$f" || bad "$f lacks the managed-by:serverkit marker (it would never be updated)"
 done
 # Windows PowerShell 5.1 reads BOM-less files as ANSI and garbles ✓ — … in them
-for f in win/*.ps1 win/lib/*.ps1 win/modules/*.ps1 files/win/*.ps1 install.ps1; do
+for f in win/*.ps1 win/lib/*.ps1 win/modules/*.ps1 files/win/*.ps1; do
   [[ $(head -c 3 "$f" | od -An -tx1 | tr -d ' ') == efbbbf ]] || bad "$f needs a UTF-8 BOM (Windows PowerShell 5.1)"
 done
+# install.ps1 runs as `irm ... | iex`: text, not a file, so a BOM would reach
+# the parser as a stray character. Keep it plain ASCII instead.
+LC_ALL=C grep -q '[^ -~[:space:]]' install.ps1 && bad "install.ps1 must be plain ASCII (it runs through irm | iex)"
 [[ $fail -eq 0 ]] && good "dotfile templates carry the marker"
 
 if [[ ${1:-} == --online ]]; then

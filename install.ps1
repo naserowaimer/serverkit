@@ -1,13 +1,13 @@
-﻿# ==============================================================================
+# ==============================================================================
 #  serverkit installer for Windows (PowerShell 5.1 or 7)
 #
 #    irm https://raw.githubusercontent.com/naserowaimer/serverkit/main/install.ps1 | iex
 #
 #  Prefer reading it first?
-#    irm …/install.ps1 -OutFile install.ps1; notepad install.ps1; .\install.ps1
+#    irm .../install.ps1 -OutFile install.ps1; notepad install.ps1; .\install.ps1
 #
 #  Puts serverkit in %LOCALAPPDATA%\serverkit\src, adds a `serverkit` command
-#  to your user PATH, and starts the interactive setup — which asks before it
+#  to your user PATH, and starts the interactive setup - which asks before it
 #  changes anything. No administrator rights needed for this step.
 #
 #  Environment:  SERVERKIT_VERSION=v0.1.0  (default: latest release, else main)
@@ -33,7 +33,7 @@ if (-not $version) {
 
 # Never replace a folder that isn't a serverkit checkout.
 if ((Test-Path $dest) -and -not (Test-Path (Join-Path $dest 'win\serverkit.ps1'))) {
-  throw "$dest exists and is not serverkit — move it away first"
+  throw "$dest exists and is not serverkit - move it away first"
 }
 
 $url = if ($version -eq 'main') { "https://github.com/$repo/archive/refs/heads/main.zip" } else { "https://github.com/$repo/archive/refs/tags/$version.zip" }

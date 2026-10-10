@@ -1,7 +1,8 @@
 ﻿# Pester 5 tests for the Windows side. Platform-neutral logic only, so they
 # also run in PowerShell on Linux:  Invoke-Pester tests/win
 BeforeAll {
-  $script:SkRoot = (Resolve-Path (Join-Path $PSScriptRoot '..' '..')).Path
+  # [IO.Path]::Combine: Windows PowerShell 5.1's Join-Path takes only two parts
+  $script:SkRoot = (Resolve-Path ([IO.Path]::Combine($PSScriptRoot, '..', '..'))).Path
   $env:USERPROFILE = Join-Path ([IO.Path]::GetTempPath()) ("skhome-" + [guid]::NewGuid().ToString('N').Substring(0, 6))
   $env:LOCALAPPDATA = Join-Path $env:USERPROFILE 'AppData/Local'
   $env:APPDATA = Join-Path $env:USERPROFILE 'AppData/Roaming'
