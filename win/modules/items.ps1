@@ -74,6 +74,21 @@ function item_winget {
   else { [void](Invoke-SkAppx 'Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe') }
   Update-SkPath
   if ($script:DryRun -or (Find-SkWinget)) { Write-SkOk 'winget available'; return 0 }
+  # Not installed at all (e.g. Windows Server 2022): Microsoft's own bootstrap
+  # is the WinGet client module's Repair-WinGetPackageManager.
+  Write-SkLog 'installing winget with Microsoft.WinGet.Client (Repair-WinGetPackageManager)'
+  $repair = @{ Latest = $true; Force = $true }
+  if ($script:IsAdmin) { $repair.AllUsers = $true }
+  [void](Invoke-SkAction 'install the Microsoft.WinGet.Client module and repair winget' {
+      if (-not (Get-PackageProvider -ListAvailable -Name NuGet -ErrorAction Ignore)) {
+        Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
+      }
+      Install-Module -Name Microsoft.WinGet.Client -Scope CurrentUser -Force -AllowClobber -ErrorAction Stop
+      Import-Module Microsoft.WinGet.Client -ErrorAction Stop
+      Repair-WinGetPackageManager @repair
+    })
+  Update-SkPath
+  if (Find-SkWinget) { Write-SkOk 'winget installed'; return 0 }
   Add-SkHint 'install "App Installer" from the Microsoft Store (or https://aka.ms/getwinget), then run serverkit again'
   Write-SkErr 'winget is not available on this system'
   return 1
