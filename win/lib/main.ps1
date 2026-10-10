@@ -363,7 +363,7 @@ function Show-SkDoctor {
     administrator = $(if ($script:IsAdmin) { 'yes — Scoop items are skipped; run from a normal PowerShell' } else { 'no (admin items ask once via UAC)' })
     Scoop = $(if ($s) { "yes: $s" } elseif (Test-SkScoopSupported) { 'not installed yet' } else { 'not usable as administrator' })
     winget = $(if ($w) { "yes: $w" } else { 'not found — item "winget" installs App Installer' })
-    'execution policy' = "$(Get-ExecutionPolicy -Scope CurrentUser) (CurrentUser)"
+    'execution policy' = "$(Get-SkUserPolicy) (what new PowerShell windows get)"
     'terminal UI' = $(if ($script:Gum) { "gum ($($script:Gum))" } else { $script:UI })
     config = (Join-Path $script:ConfigDir 'config.conf')
   }

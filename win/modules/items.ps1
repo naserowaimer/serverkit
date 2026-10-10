@@ -14,6 +14,24 @@ function Invoke-SkAction([string]$Description, [scriptblock]$Action) {
 
 function Get-SkDocuments { [Environment]::GetFolderPath('MyDocuments') }
 
+# The execution policy a new PowerShell window will have — i.e. ignoring the
+# Process scope, which serverkit's own launcher sets to Bypass.
+function Get-SkUserPolicy {
+  foreach ($scope in 'MachinePolicy', 'UserPolicy', 'CurrentUser', 'LocalMachine') {
+    $p = "$(Get-ExecutionPolicy -Scope $scope)"
+    if ($p -and $p -ne 'Undefined') { return $p }
+  }
+  if ($script:IsServer) { return 'RemoteSigned' }   # Windows Server's default
+  return 'Restricted'                               # Windows client default
+}
+
+# Appx cmdlets live in Windows PowerShell 5.1; PowerShell 7 often can't load
+# them (notably on Windows Server), so run them through powershell.exe.
+function Invoke-SkAppx([string]$Command) {
+  $ps51 = Join-SkPath $env:SystemRoot 'System32' 'WindowsPowerShell' 'v1.0' 'powershell.exe'
+  return (Invoke-SkCapture -File $ps51 -Arguments @('-NoProfile', '-NonInteractive', '-Command', $Command))
+}
+
 # ---- package managers ---------------------------------------------------------
 function item_scoop {
   if (Find-SkScoop) { Write-SkSkip "Scoop present: $(Get-SkScoopRoot)"; return 0 }
@@ -21,15 +39,23 @@ function item_scoop {
   # Scoop's shims and your PowerShell profile are scripts: the default policy
   # on Windows clients ("Restricted") blocks them. RemoteSigned for this user
   # only is what Scoop documents; it still blocks unsigned downloaded scripts.
-  $pol = "$(Get-ExecutionPolicy -Scope CurrentUser)"
-  if (@('Undefined', 'Restricted', 'AllSigned') -contains $pol) {
+  $pol = Get-SkUserPolicy
+  if (@('Restricted', 'AllSigned') -contains $pol) {
     $gpo = "$(Get-ExecutionPolicy -Scope MachinePolicy)$(Get-ExecutionPolicy -Scope UserPolicy)"
     if ($gpo -match 'Restricted|AllSigned') {
       Write-SkWarn 'your organization enforces an execution policy that blocks Scoop shims — ask IT, or use winget items only'
-    } elseif (-not (Invoke-SkAction 'set execution policy RemoteSigned for this user' { Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force })) {
-      return 1
-    } else { Write-SkOk "execution policy for $env:USERNAME`: RemoteSigned (needed by Scoop and your PowerShell profile)" }
-  }
+    } else {
+      $ok = Invoke-SkAction 'set execution policy RemoteSigned for this user' {
+        # PowerShell reports success-but-overridden as an error when a more
+        # specific scope (here: this process's own -ExecutionPolicy Bypass)
+        # wins. The setting is saved all the same; verify it below.
+        try { Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force -ErrorAction Stop } catch { }
+        if ("$(Get-ExecutionPolicy -Scope CurrentUser)" -ne 'RemoteSigned') { throw 'the policy did not change' }
+      }
+      if (-not $ok) { return 1 }
+      Write-SkOk "execution policy for $env:USERNAME`: RemoteSigned (needed by Scoop and your PowerShell profile)"
+    }
+  } else { Write-SkSkip "execution policy already allows local scripts ($pol)" }
   Write-SkLog 'installing Scoop (official installer)'
   $args_ = @()
   if ($script:IsAdmin) { $args_ = @('-RunAsAdmin') }   # only reachable with SERVERKIT_SCOOP_AS_ADMIN=1
@@ -44,7 +70,8 @@ function item_winget {
   if (Find-SkWinget) { Write-SkSkip "winget present: $(Find-SkWinget)"; return 0 }
   # winget ships with "App Installer"; registering it is the documented fix
   # when it's installed but not yet registered for this user.
-  [void](Invoke-SkAction 'register App Installer (winget)' { Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe })
+  if ($script:DryRun) { Write-Host '    would: register App Installer (winget)' -ForegroundColor DarkGray }
+  else { [void](Invoke-SkAppx 'Add-AppxPackage -RegisterByFamilyName -MainPackage Microsoft.DesktopAppInstaller_8wekyb3d8bbwe') }
   Update-SkPath
   if ($script:DryRun -or (Find-SkWinget)) { Write-SkOk 'winget available'; return 0 }
   Add-SkHint 'install "App Installer" from the Microsoft Store (or https://aka.ms/getwinget), then run serverkit again'
@@ -231,7 +258,9 @@ function item_pwsh_setup {
 function item_windows_terminal {
   $dir = Join-SkPath $env:LOCALAPPDATA 'Microsoft' 'Windows Terminal' 'Fragments' 'serverkit'
   [void](Write-SkFile (Join-SkPath $dir 'serverkit.json') ([IO.File]::ReadAllText((Join-SkPath $script:Root 'files' 'win' 'terminal-fragment.json'))))
-  if (-not (Get-AppxPackage -Name Microsoft.WindowsTerminal -ErrorAction SilentlyContinue) -and -not (Test-SkCommand wt)) {
+  $wt = (Test-SkCommand wt) -or (Test-Path -LiteralPath (Join-SkPath $env:LOCALAPPDATA 'Microsoft' 'WindowsApps' 'wt.exe'))
+  if (-not $wt -and -not $script:DryRun) { $wt = ((Invoke-SkAppx '(Get-AppxPackage -Name Microsoft.WindowsTerminal) -ne $null').Output -match 'True') }
+  if (-not $wt) {
     Add-SkHint 'Windows Terminal is not installed — the "Windows Terminal" desktop item installs it; the setup applies once it is'
   } else {
     Add-SkHint 'restart Windows Terminal: PowerShell profiles now use JetBrains Mono Nerd Font and the serverkit color scheme'
