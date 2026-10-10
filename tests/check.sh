@@ -85,7 +85,7 @@ for id in "${ITEM_ORDER[@]}"; do
   [[ -n ${I_NAME[$id]} && -n ${I_DESC[$id]} ]] || bad "$id: missing name or description"
   [[ -n ${I_SPEC[$id]} ]] || bad "$id: no install spec"
   for tok in ${I_SPEC[$id]}; do
-    [[ $tok =~ ^[a-z][a-z0-9-]*=(brew|cask|flatpak|npm|pkg|sys|fn|builtin|none|scoop|winget|ps|psadmin):[^[:space:]]+$ ]] ||
+    [[ $tok =~ ^[a-z][a-z0-9-]*=(brew|cask|flatpak|npm|uv|pkg|sys|fn|builtin|none|scoop|winget|ps|psadmin):[^[:space:]]+$ ]] ||
       bad "$id: malformed spec '$tok'"
     kind=${tok#*=}
     kind=${kind%%:*}
@@ -108,7 +108,7 @@ for id in "${ITEM_ORDER[@]}"; do
     [[ -n ${seen[$d]+x} ]] || bad "$id: needs '$d', which comes later in the catalog (order = install order)"
   done
 done
-for need in homebrew flatpak runtimes scoop winget; do
+for need in homebrew flatpak runtimes uv scoop winget; do
   [[ -n ${seen[$need]+x} ]] || bad "implicit dependency '$need' is missing from the catalog"
 done
 # implied dependencies must also come first
@@ -116,7 +116,7 @@ for id in "${ITEM_ORDER[@]}"; do
   for tok in ${I_SPEC[$id]}; do
     kind=${tok#*=}
     kind=${kind%%:*}
-    case $kind in brew | cask) dep=homebrew ;; flatpak) dep=flatpak ;; npm) dep=runtimes ;; scoop) dep=scoop ;; winget) dep=winget ;; *) continue ;; esac
+    case $kind in brew | cask) dep=homebrew ;; flatpak) dep=flatpak ;; npm) dep=runtimes ;; uv) dep=uv ;; scoop) dep=scoop ;; winget) dep=winget ;; *) continue ;; esac
     [[ $id == "$dep" ]] && continue
     pos_i=0 pos_d=0 k=0
     for x in "${ITEM_ORDER[@]}"; do
@@ -199,6 +199,10 @@ if [[ ${1:-} == --online ]]; then
         [[ -n $row ]] || bad "$id: no Homebrew cask '$arg'"
         [[ $(cut -f2 <<<"$row") == deprecated ]] && bad "$id: cask '$arg' is deprecated or disabled"
         ;;
+      uv)
+        code=$(curl -s -o /dev/null -w '%{http_code}' "https://pypi.org/pypi/$arg/json")
+        [[ $code == 200 ]] || bad "$id: PyPI has no package '$arg' (HTTP $code)"
+        ;;
       flatpak)
         code=$(curl -s -o /dev/null -w '%{http_code}' "https://flathub.org/api/v2/appstream/$arg")
         [[ $code == 200 ]] || bad "$id: Flathub has no app '$arg' (HTTP $code)"
@@ -234,7 +238,7 @@ if [[ ${1:-} == --online ]]; then
   for n in colima docker docker-compose docker-buildx zsh-autosuggestions zsh-syntax-highlighting zsh-completions tmux fzf neovim ripgrep fd mise libpq; do
     grep -q "^${n}"$'\t' "$tmp/formulae" || bad "modules use formula '$n', which doesn't exist"
   done
-  [[ $fail -eq 0 ]] && good "every Homebrew, cask, Flathub, Scoop and winget name exists and is maintained"
+  [[ $fail -eq 0 ]] && good "every Homebrew, cask, Flathub, PyPI, Scoop and winget name exists and is maintained"
 fi
 
 echo

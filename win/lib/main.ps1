@@ -100,6 +100,7 @@ function Invoke-SkItem([string]$Id) {
       'scoop' { $r = Install-SkScoop ($arg.Split(',')) }
       'winget' { $r = Install-SkWinget $arg }
       'npm' { $r = Install-SkNpm $arg }
+      'uv' { $r = Install-SkUv $arg }
       { $_ -eq 'ps' -or $_ -eq 'psadmin' } { $r = & "item_$arg" }
       'builtin' { Write-SkSkip "$arg comes with Windows"; $r = 0 }
       default { Write-SkErr "don't know how to install $Id ($spec)"; $r = 1 }

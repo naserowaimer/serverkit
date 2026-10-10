@@ -30,7 +30,7 @@ What is this machine?
 
 ## What it can set up
 
-About 140 items in 15 groups — run `serverkit list` to see what your machine offers:
+About 170 items in 15 groups — run `serverkit list` to see what your machine offers:
 
 | Group | Examples |
 |---|---|
@@ -42,11 +42,11 @@ About 140 items in 15 groups — run `serverkit list` to see what your machine o
 | Users | team group, per-user directories, `serverkit-adduser` |
 | Languages | mise (Node, Python, Go), Rust, uv, Bun, Deno, pnpm |
 | Shell | zsh setup, Starship, tmux config, SSH auto-tmux, LazyVim, Nerd Font, atuin, zoxide |
-| CLI essentials | ripgrep, fd, bat, fzf, eza, jq, btop, lazygit, delta, … |
+| CLI essentials | ripgrep, fd, bat, fzf, eza, jq, btop, lazygit, delta, Neovim, GNU tools, … |
 | Dev & cloud | GitHub/GitLab CLIs, pre-commit, AWS/Azure/GCP CLIs, OpenTofu, Ansible |
 | Databases | psql, pgcli, mycli, litecli, sqlite (clients only) |
 | AI agents | Claude Code, opencode, aider, Codex, Gemini CLI, Copilot CLI |
-| Desktop apps | VS Code, Zed, Ghostty, browsers, Obsidian, Slack… (Homebrew casks on macOS, Flathub on Linux) |
+| Desktop apps | VS Code, Zed, browsers, Obsidian, KeePassXC, Wireshark, OBS, Slack… (Homebrew casks on macOS, Flathub on Linux, winget on Windows) |
 
 ## Where it runs
 
@@ -70,8 +70,14 @@ if something needs it.
 ## Windows
 
 The same catalog, profiles and settings drive a PowerShell version
-(`serverkit.cmd`, Windows PowerShell 5.1 or PowerShell 7). Command-line tools
-come from **Scoop**, desktop apps from **winget**. Windows-specific items:
+(`serverkit.cmd`, Windows PowerShell 5.1 or PowerShell 7), and it installs the
+same tools: every command-line tool in the list above that exists for Windows
+(about 75 — ripgrep, fd, bat, fzf, eza, jq, lazygit, delta, Neovim, gh,
+kubectl, k9s, Helm, OpenTofu, restic, GNU coreutils/grep/sed/make, …) comes from
+**Scoop**; Python tools (pgcli, mycli, litecli, HTTPie, pre-commit, aider) from
+**uv**; desktop apps from **winget**; Node, Python and Go from mise; Rust from
+rustup. Only server-side pieces (fail2ban, nginx, ZFS, …) and macOS apps stay
+off the menu. On top of that, Windows-specific items:
 
 | Item | What it does |
 |---|---|
@@ -84,7 +90,8 @@ come from **Scoop**, desktop apps from **winget**. Windows-specific items:
 | Windows Firewall | makes sure it's on for every network type (rules untouched) |
 | Visual Studio Build Tools | the C/C++ toolchain Rust and native modules need |
 | Automatic app updates | weekly `scoop update *` + `winget upgrade --all` (scheduled task) |
-| Apps | PowerShell 7, Windows Terminal, PowerToys, Everything, ShareX, Notepad++, Sysinternals, plus the cross-platform apps |
+| gsudo | `sudo` for Windows: run one command as administrator |
+| Windows apps | PowerShell 7, Windows Terminal, PowerToys, Everything, ShareX, Notepad++, Sysinternals, UniGetUI, WinSCP, PuTTY, Ditto, WinDirStat, 7-Zip, Rufus — plus the cross-platform apps |
 
 Run serverkit from a normal (non-administrator) PowerShell: items that need
 administrator rights run together in one elevated window after a single UAC

@@ -63,7 +63,7 @@ _resolve_why() { # id spec -> REPLY = reason it can't install here, or ""
   fi
   [[ $1 == homebrew ]] && kind=brew
   case "$kind" in
-  brew | cask | npm)
+  brew | cask | npm | uv)
     brew_supported || REPLY="needs Homebrew, which can't run here$([[ $TARGET_USER == root ]] && echo " as root (use --user NAME)")"
     ;;
   flatpak) have flatpak || system_supported || REPLY="needs Flatpak" ;;
@@ -101,6 +101,7 @@ item_deps() {
   brew | cask) d+=" homebrew" ;;
   flatpak) d+=" flatpak" ;;
   npm) d+=" runtimes" ;;
+  uv) d+=" uv" ;;
   esac
   printf '%s' "$d"
 }

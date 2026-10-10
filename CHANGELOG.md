@@ -1,6 +1,12 @@
 # Changelog
 
-## 0.1.0 — unreleased
+## 0.1.0 — 2026-10-10
+- Windows installs the tools, not only the setup: every cross-platform
+  command-line tool with a Windows build comes from Scoop, Python tools
+  (pgcli, mycli, litecli, HTTPie, pre-commit, aider) from the new `uv:` kind,
+  plus Windows apps (UniGetUI, WinSCP, PuTTY, Ditto, WinDirStat, 7-Zip, Rufus)
+  and new cross-platform items (Neovim, gping, KeePassXC, Wireshark, OBS).
+  Profiles preselect gsudo, Windows Terminal setup and app updates on Windows.
 - Windows support: PowerShell version (5.1 and 7) sharing the catalog and
   profiles; Scoop for tools, winget for apps; PowerShell profile, Windows
   Terminal fragment, WSL, OpenSSH server, Developer Mode, long paths and more;

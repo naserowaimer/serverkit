@@ -11,13 +11,13 @@ lazysql|db|lazysql|terminal UI for SQL databases|all=brew:lazysql|
 
 Install specs: `TARGET=KIND:ARG`, space-separated; the most specific target wins
 (distro id > `debian rhel arch suse` > `linux mac win` > `all`). Kinds: `brew`,
-`cask` (macOS), `flatpak` (Linux), `npm`, `pkg` (native, per family), `sys`/`fn`
+`cask` (macOS), `flatpak` (Linux), `npm`, `uv` (Python tools), `pkg` (native, per family), `sys`/`fn`
 (a function in `modules/`), `scoop`/`winget`/`ps`/`psadmin` (Windows; functions
 in `win/modules/`), `builtin`, `none`. On Windows `all=` only counts for npm,
-builtin and none, so give tools an explicit `win=scoop:…` (or `win=winget:…`).
+uv, builtin and none, so give tools an explicit `win=scoop:…` (or `win=winget:…`).
 Prefer `brew` (Linux, macOS) and `scoop` (Windows) for command-line tools: per
 user, and the same everywhere. Then run `tests/check.sh --online`: it verifies
-every Homebrew, Flathub, Scoop and winget name exists and isn't deprecated.
+every Homebrew, Flathub, PyPI, Scoop and winget name exists and isn't deprecated.
 
 ## Add a system item (a function)
 

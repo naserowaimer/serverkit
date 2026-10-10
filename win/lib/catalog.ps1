@@ -39,7 +39,7 @@ function Resolve-SkSpec([string]$Id) {
     $r = 0
     if ($t -eq $script:DISTRO_ID) { $r = 4 }
     elseif ($t -eq $script:FAMILY -or $t -eq $script:OS) { $r = 3 }
-    elseif ($t -eq 'all' -and @('npm', 'builtin', 'none') -contains $kind) { $r = 1 }
+    elseif ($t -eq 'all' -and @('npm', 'uv', 'builtin', 'none') -contains $kind) { $r = 1 }
     if ($r -gt $rank) { $rank = $r; $best = $s }
   }
   return $best
@@ -50,7 +50,7 @@ function Get-SkWhy([string]$Id, [string]$Spec) {
   $kind = $Spec.Split(':')[0]
   switch ($kind) {
     'none' { return 'not available on Windows' }
-    { $_ -eq 'scoop' -or $_ -eq 'npm' } {
+    { @('scoop', 'npm', 'uv') -contains $_ } {
       if (-not (Test-SkScoopSupported)) { return "Scoop doesn't run as administrator — start serverkit from a normal PowerShell" }
     }
   }
@@ -82,6 +82,7 @@ function Get-SkDeps([string]$Id) {
     'scoop' { $d.Add('scoop') }
     'winget' { $d.Add('winget') }
     'npm' { $d.Add('runtimes') }
+    'uv' { $d.Add('uv') }
   }
   return @($d | Where-Object { $_ -ne $Id } | Select-Object -Unique)
 }

@@ -74,6 +74,25 @@ function Install-SkWinget([string]$Id, [string[]]$Extra = @()) {
   return 1
 }
 
+# uv:PACKAGE items: a Python command-line tool in its own environment.
+function Install-SkUv([string]$Package) {
+  $uv = Join-SkPath (Get-SkScoopRoot) 'shims' 'uv.exe'
+  if (-not (Test-Path -LiteralPath $uv)) {
+    if ($script:DryRun) { $uv = 'uv' } else { Write-SkErr "uv not found — the 'uv' item provides it"; return 1 }
+  }
+  $have = $false
+  if (-not $script:DryRun) {
+    $r = Invoke-SkCapture -File $uv -Arguments @('tool', 'list')
+    $have = ($r.Code -eq 0 -and $r.Output -match ('(?m)^' + [regex]::Escape($Package) + ' '))
+  }
+  if ($have) { Write-SkSkip "$Package already installed" } else {
+    Write-SkLog "uv tool install $Package"
+    if ((Invoke-SkCmd -File $uv -Arguments @('tool', 'install', $Package)) -ne 0) { Write-SkErr "uv could not install $Package"; return 1 }
+  }
+  # uv puts the tools' commands in ~\.local\bin
+  return (Add-SkUserPath (Join-SkPath $env:USERPROFILE '.local' 'bin'))
+}
+
 # Global npm packages through mise's Node (the 'runtimes' item): no admin.
 function Install-SkNpm([string]$Package) {
   $mise = Join-SkPath (Get-SkScoopRoot) 'shims' 'mise.exe'

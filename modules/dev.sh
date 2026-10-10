@@ -51,15 +51,20 @@ item_claude_code() {
 
 # Homebrew ships Azure CLI as a macOS cask only; on Linux it's a Python app,
 # installed per user with uv (Microsoft supports pip-style installs).
-item_azure_cli() {
-  brew_install uv || return 1
+# uv:PACKAGE items: a Python command-line tool in its own environment.
+uv_install() { # package
   local uv
   uv="$(brew_prefix)/bin/uv"
-  if grep -q '^azure-cli ' <<<"$(as_user_q "$uv" tool list 2>/dev/null)"; then
-    skip "Azure CLI already installed"
-    return 0
+  $DRY_RUN && uv=${uv:-uv}
+  [[ -x $uv ]] || $DRY_RUN || {
+    err "uv not found — the 'uv' item provides it"
+    return 1
+  }
+  if grep -q "^$1 " <<<"$(as_user_q "$uv" tool list 2>/dev/null)"; then
+    skip "$1 already installed"
+  else
+    as_user "$uv" tool install "$1" || return 1
   fi
-  as_user "$uv" tool install azure-cli || return 1
   ensure_shell_block localbin 'case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac'
 }
 

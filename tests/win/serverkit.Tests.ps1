@@ -29,6 +29,16 @@ Describe 'catalog on Windows' {
   It 'orders a plan by the catalog' {
     (Resolve-SkPlan @('ripgrep')).Plan -join ' ' | Should -Be 'scoop ripgrep'
   }
+  It 'installs Python tools with uv, after uv itself' {
+    Resolve-SkSpec 'pgcli' | Should -Be 'uv:pgcli'
+    (Resolve-SkPlan @('pgcli')).Plan -join ' ' | Should -Be 'scoop uv pgcli'
+  }
+  It 'offers every cross-platform tool on Windows too' {
+    # a tool on Linux/macOS should install on Windows too; these are the known exceptions
+    $unix = 'admin-user ansible auto-updates code-server disk-health fail2ban flatpak flatseal ghostty htop iterm2 k3s kernel-hardening maccy mosh nginx orbstack psql raycast rectangle shared-users ssh-autotmux ssh-hardening stats the-unarchiver tmux-config user-limits utm zfs-care zsh-setup'.Split(' ')
+    $missing = @($script:ItemOrder | Where-Object { -not (Resolve-SkSpec $_) -and $unix -notcontains $_ })
+    $missing | Should -BeNullOrEmpty
+  }
   It 'marks administrator items' {
     Test-SkSystemItem 'developer-mode' | Should -BeTrue
     Test-SkSystemItem 'ripgrep' | Should -BeFalse

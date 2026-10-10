@@ -72,3 +72,22 @@ function Update-SkPath {
   $u = [Environment]::GetEnvironmentVariable('Path', 'User')
   $env:Path = "$m;$u"
 }
+
+# Add a folder to the user's PATH. Read and written raw, so entries like
+# %USERPROFILE%\bin stay unexpanded (REG_EXPAND_SZ), the way Windows keeps them.
+function Add-SkUserPath([string]$Dir) {
+  $u = "$([Environment]::GetEnvironmentVariable('Path', 'User'))"
+  if (@($u.Split(';') | Where-Object { $_ -and $_.TrimEnd('\') -eq $Dir.TrimEnd('\') }).Count) { return 0 }
+  if ($script:DryRun) { Write-Host "    would add $Dir to your PATH" -ForegroundColor DarkGray; return 0 }
+  $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+  try {
+    $raw = "$($key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames))"
+    $key.SetValue('Path', ((@($raw.TrimEnd(';'), $Dir) | Where-Object { $_ }) -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString)
+  } finally { $key.Close() }
+  # Tell running programs (Explorer, new terminals) that the environment changed.
+  [Environment]::SetEnvironmentVariable('SERVERKIT_PATH_CHANGED', '1', 'User')
+  [Environment]::SetEnvironmentVariable('SERVERKIT_PATH_CHANGED', $null, 'User')
+  Update-SkPath
+  Write-SkOk "added $Dir to your PATH (new terminals pick it up)"
+  return 0
+}

@@ -20,6 +20,7 @@ rather than a public issue. You'll get a reply within a few days.
 | Tailscale, k3s, code-server, rustup, Claude Code | each vendor's official install script | HTTPS; saved to a private temp dir, then run |
 | JetBrains Mono Nerd Font | GitHub release | SHA-256 from the release's `SHA-256.txt` |
 | Flathub apps | `flatpak install --user` | Flatpak's own signature checks |
+| Python tools (pgcli, aider, …) | `uv tool install` from PyPI, each in its own environment, as you | HTTPS; PyPI |
 | Scoop | official installer from `get.scoop.sh` | HTTPS; Scoop checks each package's hash from its manifest |
 | winget apps | `winget install --exact --id …` | winget verifies installer hashes from its manifests |
 | PowerShell modules (Terminal-Icons, PSFzf) | PowerShell Gallery, current user only | Gallery package signing |
@@ -54,7 +55,8 @@ waiting for your review.
 Your files: `%APPDATA%\serverkit\` (config, PowerShell profile config), a marked
 block in `Documents\PowerShell\profile.ps1` and `Documents\WindowsPowerShell\profile.ps1`,
 a Windows Terminal fragment in `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\serverkit\`,
-and `%LOCALAPPDATA%\serverkit\` (logs, gum). With administrator rights, only
+`%LOCALAPPDATA%\serverkit\` (logs, gum), and your user `PATH` (the
+serverkit command; `~\.local\bin` for uv tools). With administrator rights, only
 the items you pick: registry values for Developer Mode and long paths, Windows
 features (WSL, OpenSSH Server), and the firewall's on/off state — the only
 rule it ever adds is OpenSSH's inbound TCP 22, when you pick the OpenSSH item.

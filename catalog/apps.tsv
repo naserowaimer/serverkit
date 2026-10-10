@@ -6,12 +6,13 @@
 #  install: space-separated TARGET=KIND:ARG, most specific target wins:
 #     TARGET  a distro id (amzn, rocky…) > debian rhel arch suse (family)
 #             > linux mac win (OS) > all
-#             On Windows, `all=` applies only to npm/builtin/none items: the
+#             On Windows, `all=` applies only to npm/uv/builtin/none items: the
 #             Unix kinds (brew, fn, sys…) need an explicit win= target.
 #     KIND    brew:formula[,formula]   Homebrew formulae (as the user)
 #             cask:token               macOS app via Homebrew
 #             flatpak:app.id           Linux desktop app from Flathub (per user)
 #             npm:package              global npm package (node from mise)
+#             uv:package               Python command-line tool via `uv tool install`
 #             pkg:name[,name]          native package (apt/dnf/pacman/zypper)
 #             sys:function             system function in modules/ (uses sudo)
 #             fn:function              user function in modules/
@@ -22,7 +23,7 @@
 #             builtin:what             already part of this OS; nothing to do
 #             none:why                 not available on that target
 #  needs: other ids installed first (brew/cask -> homebrew, flatpak -> flatpak,
-#         npm -> runtimes, scoop -> scoop, winget -> winget are automatic; on
+#         npm -> runtimes, uv -> uv, scoop -> scoop, winget -> winget are automatic; on
 #         Windows a "homebrew" need means scoop).
 #
 #  Order matters: items install top to bottom, so dependencies come first.
@@ -89,7 +90,8 @@ cloudflared|remote|Cloudflare Tunnel|publish web apps with no open ports|linux=s
 code-server|remote|code-server|VS Code in the browser, bound to localhost|linux=sys:code_server|
 mosh|remote|mosh|SSH that survives sleep and roaming|linux=pkg:mosh mac=brew:mosh amzn=none:unpackaged|
 wireguard|remote|WireGuard tools|wg and wg-quick|linux=pkg:wireguard-tools mac=brew:wireguard-tools win=winget:WireGuard.WireGuard|
-mtr|remote|mtr|traceroute and ping in one|debian=pkg:mtr-tiny rhel=pkg:mtr arch=pkg:mtr suse=pkg:mtr mac=brew:mtr|
+mtr|remote|mtr|traceroute and ping in one|debian=pkg:mtr-tiny rhel=pkg:mtr arch=pkg:mtr suse=pkg:mtr mac=brew:mtr win=scoop:extras/winmtr|
+gping|remote|gping|ping with a live graph|all=brew:gping win=scoop:gping|
 nmap|remote|nmap|network scanner|all=brew:nmap win=winget:Insecure.Nmap|
 
 # ---- web ------------------------------------------------------------------------
@@ -129,7 +131,7 @@ git-defaults|shell|Git defaults|main branch, rebase on pull, delta diffs — kee
 atuin|shell|Atuin|searchable, synced shell history|all=brew:atuin win=scoop:atuin|
 zoxide|shell|zoxide|smarter cd that learns your directories|all=brew:zoxide win=scoop:zoxide|
 direnv|shell|direnv|per-directory environment variables|all=brew:direnv win=scoop:direnv|
-zellij|shell|Zellij|terminal workspace with layouts|all=brew:zellij|
+zellij|shell|Zellij|terminal workspace with layouts|all=brew:zellij win=scoop:zellij|
 
 # ---- cli ------------------------------------------------------------------------
 ripgrep|cli|ripgrep|very fast recursive search (rg)|all=brew:ripgrep win=scoop:ripgrep|
@@ -148,7 +150,7 @@ dust|cli|dust|du, visual|all=brew:dust win=scoop:dust|
 tldr|cli|tldr|short, practical man pages|all=brew:tealdeer win=scoop:tealdeer|
 delta|cli|delta|beautiful git diffs|all=brew:git-delta win=scoop:delta|
 lazygit|cli|lazygit|terminal UI for git|all=brew:lazygit win=scoop:extras/lazygit|
-httpie|cli|HTTPie|friendly HTTP client|all=brew:httpie|
+httpie|cli|HTTPie|friendly HTTP client|all=brew:httpie win=uv:httpie|
 xh|cli|xh|fast HTTPie-compatible client|all=brew:xh win=scoop:xh|
 hyperfine|cli|hyperfine|command benchmarking|all=brew:hyperfine win=scoop:hyperfine|
 tokei|cli|tokei|count lines of code|all=brew:tokei win=scoop:tokei|
@@ -157,9 +159,10 @@ sd|cli|sd|intuitive find and replace|all=brew:sd win=scoop:sd|
 glow|cli|glow|render Markdown in the terminal|all=brew:glow win=scoop:glow|
 yazi|cli|yazi|terminal file manager|all=brew:yazi win=scoop:yazi|
 fastfetch|cli|fastfetch|system information at a glance|all=brew:fastfetch win=scoop:fastfetch|
-lnav|cli|lnav|log file navigator|all=brew:lnav|
+neovim|cli|Neovim|modern Vim-based editor|all=brew:neovim win=scoop:neovim|
+lnav|cli|lnav|log file navigator|all=brew:lnav win=scoop:lnav|
 wget|cli|wget|download files|all=brew:wget win=scoop:wget|
-gnu-tools|cli|GNU tools|coreutils, sed, grep, findutils, awk (GNU versions for macOS)|mac=brew:coreutils,gnu-sed,grep,findutils,gawk win=scoop:uutils-coreutils|
+gnu-tools|cli|GNU tools|coreutils, sed, grep, findutils, awk, less, make (for macOS and Windows)|mac=brew:coreutils,gnu-sed,grep,findutils,gawk win=scoop:uutils-coreutils,grep,sed,gawk,findutils,less,make|
 
 # ---- dev ------------------------------------------------------------------------
 gh|dev|GitHub CLI|pull requests, issues and Actions from the terminal|all=brew:gh win=scoop:gh|
@@ -169,14 +172,14 @@ just|dev|just|project command runner|all=brew:just win=scoop:just|
 watchexec|dev|watchexec|re-run commands when files change|all=brew:watchexec win=scoop:watchexec|
 shellcheck|dev|ShellCheck|shell script linter|all=brew:shellcheck win=scoop:shellcheck|
 shfmt|dev|shfmt|shell script formatter|all=brew:shfmt win=scoop:shfmt|
-pre-commit|dev|pre-commit|git hook manager|all=brew:pre-commit|
+pre-commit|dev|pre-commit|git hook manager|all=brew:pre-commit win=uv:pre-commit|
 act|dev|act|run GitHub Actions locally|all=brew:act win=scoop:act|
 hadolint|dev|hadolint|Dockerfile linter|all=brew:hadolint win=scoop:hadolint|
 cmake|dev|CMake|build system generator|all=brew:cmake win=scoop:cmake|
 
 # ---- cloud ----------------------------------------------------------------------
 awscli|cloud|AWS CLI|Amazon Web Services|all=brew:awscli win=winget:Amazon.AWSCLI|
-azure-cli|cloud|Azure CLI|Microsoft Azure|mac=cask:azure-cli linux=fn:azure_cli win=winget:Microsoft.AzureCLI|homebrew
+azure-cli|cloud|Azure CLI|Microsoft Azure|mac=cask:azure-cli linux=uv:azure-cli win=winget:Microsoft.AzureCLI|
 gcloud|cloud|Google Cloud CLI|Google Cloud (macOS)|mac=cask:gcloud-cli win=winget:Google.CloudSDK|
 opentofu|cloud|OpenTofu|open-source infrastructure as code (Terraform-compatible)|all=brew:opentofu win=scoop:opentofu|
 ansible|cloud|Ansible|configuration management over SSH|all=brew:ansible|
@@ -186,15 +189,15 @@ hcloud|cloud|hcloud|Hetzner Cloud|all=brew:hcloud win=scoop:hcloud|
 
 # ---- db -------------------------------------------------------------------------
 psql|db|psql|PostgreSQL client (no server)|all=fn:psql|homebrew
-pgcli|db|pgcli|PostgreSQL client with autocompletion|all=brew:pgcli|
-mycli|db|mycli|MySQL/MariaDB client with autocompletion|all=brew:mycli|
-litecli|db|litecli|SQLite client with autocompletion|all=brew:litecli|
+pgcli|db|pgcli|PostgreSQL client with autocompletion|all=brew:pgcli win=uv:pgcli|
+mycli|db|mycli|MySQL/MariaDB client with autocompletion|all=brew:mycli win=uv:mycli|
+litecli|db|litecli|SQLite client with autocompletion|all=brew:litecli win=uv:litecli|
 sqlite|db|SQLite CLI|sqlite3 shell|debian=pkg:sqlite3 rhel=pkg:sqlite arch=pkg:sqlite suse=pkg:sqlite3 mac=builtin:sqlite3 win=scoop:sqlite|
 
 # ---- ai -------------------------------------------------------------------------
 claude-code|ai|Claude Code|Anthropic's coding agent (official installer)|all=fn:claude_code win=ps:claude_code|
 opencode|ai|opencode|open-source terminal coding agent|all=brew:opencode win=scoop:opencode|
-aider|ai|aider|AI pair programming in your terminal|all=brew:aider|
+aider|ai|aider|AI pair programming in your terminal|all=brew:aider win=uv:aider-chat|
 codex|ai|Codex CLI|OpenAI's coding agent|mac=cask:codex linux=npm:@openai/codex win=npm:@openai/codex|
 gemini|ai|Gemini CLI|Google's coding agent|all=npm:@google/gemini-cli|
 copilot|ai|GitHub Copilot CLI|GitHub's coding agent|mac=cask:copilot-cli linux=npm:@github/copilot win=npm:@github/copilot|
@@ -204,7 +207,7 @@ ghostty|desktop|Ghostty|fast, native terminal (macOS)|mac=cask:ghostty|
 iterm2|desktop|iTerm2|feature-rich terminal (macOS)|mac=cask:iterm2|
 wezterm|desktop|WezTerm|GPU terminal with multiplexing|mac=cask:wezterm linux=flatpak:org.wezfurlong.wezterm win=winget:wez.wezterm|
 vscode|desktop|Visual Studio Code|code editor|mac=cask:visual-studio-code linux=flatpak:com.visualstudio.code win=winget:Microsoft.VisualStudioCode|
-cursor|desktop|Cursor|AI code editor (macOS)|mac=cask:cursor win=winget:Anysphere.Cursor|
+cursor|desktop|Cursor|AI code editor (macOS, Windows)|mac=cask:cursor win=winget:Anysphere.Cursor|
 zed|desktop|Zed|fast collaborative editor|mac=cask:zed linux=flatpak:dev.zed.Zed win=winget:ZedIndustries.Zed|
 firefox|desktop|Firefox|web browser|mac=cask:firefox linux=flatpak:org.mozilla.firefox win=winget:Mozilla.Firefox|
 chrome|desktop|Google Chrome|web browser|mac=cask:google-chrome linux=flatpak:com.google.Chrome win=winget:Google.Chrome|
@@ -215,11 +218,14 @@ discord|desktop|Discord|voice and chat|mac=cask:discord linux=flatpak:com.discor
 telegram|desktop|Telegram|messaging|mac=cask:telegram linux=flatpak:org.telegram.desktop win=winget:Telegram.TelegramDesktop|
 signal|desktop|Signal|private messaging|mac=cask:signal linux=flatpak:org.signal.Signal win=winget:OpenWhisperSystems.Signal|
 zoom|desktop|Zoom|video meetings|mac=cask:zoom linux=flatpak:us.zoom.Zoom win=winget:Zoom.Zoom|
+keepassxc|desktop|KeePassXC|offline password manager|mac=cask:keepassxc linux=flatpak:org.keepassxc.KeePassXC win=winget:KeePassXCTeam.KeePassXC|
 bitwarden|desktop|Bitwarden|password manager|mac=cask:bitwarden linux=flatpak:com.bitwarden.desktop win=winget:Bitwarden.Bitwarden|
-1password|desktop|1Password|password manager (macOS)|mac=cask:1password win=winget:AgileBits.1Password|
+1password|desktop|1Password|password manager (macOS, Windows)|mac=cask:1password win=winget:AgileBits.1Password|
 dbeaver|desktop|DBeaver|database GUI|mac=cask:dbeaver-community linux=flatpak:io.dbeaver.DBeaverCommunity win=winget:DBeaver.DBeaver.Community|
 postman|desktop|Postman|API client|mac=cask:postman linux=flatpak:com.getpostman.Postman win=winget:Postman.Postman|
 bruno|desktop|Bruno|offline, git-friendly API client|mac=cask:bruno linux=flatpak:com.usebruno.Bruno win=winget:Bruno.Bruno|
+wireshark|desktop|Wireshark|network packet analyzer|mac=cask:wireshark-app linux=flatpak:org.wireshark.Wireshark win=winget:WiresharkFoundation.Wireshark|
+obs|desktop|OBS Studio|screen recording and streaming|mac=cask:obs linux=flatpak:com.obsproject.Studio win=winget:OBSProject.OBSStudio|
 vlc|desktop|VLC|media player|mac=cask:vlc linux=flatpak:org.videolan.VLC win=winget:VideoLAN.VLC|
 spotify|desktop|Spotify|music|mac=cask:spotify linux=flatpak:com.spotify.Client win=winget:Spotify.Spotify|
 orbstack|desktop|OrbStack|fast Docker and Linux VMs (macOS)|mac=cask:orbstack|
@@ -237,3 +243,10 @@ everything|desktop|Everything|instant file search (Windows)|win=winget:voidtools
 sharex|desktop|ShareX|screenshots and screen recording (Windows)|win=winget:ShareX.ShareX|
 notepadpp|desktop|Notepad++|lightweight editor (Windows)|win=winget:Notepad++.Notepad++|
 sysinternals|desktop|Sysinternals Suite|Process Explorer, Autoruns and more (Windows)|win=winget:Microsoft.Sysinternals.Suite|
+unigetui|desktop|UniGetUI|one window to update everything from winget and Scoop (Windows)|win=winget:MartiCliment.UniGetUI|
+winscp|desktop|WinSCP|SFTP/SCP file transfer to your servers (Windows)|win=winget:WinSCP.WinSCP|
+putty|desktop|PuTTY|SSH and serial console client (Windows)|win=winget:PuTTY.PuTTY|
+ditto|desktop|Ditto|clipboard history (Windows)|win=winget:Ditto.Ditto|
+windirstat|desktop|WinDirStat|see what fills your disk (Windows)|win=winget:WinDirStat.WinDirStat|
+7zip|desktop|7-Zip|archive manager with Explorer menu (Windows)|win=winget:7zip.7zip|
+rufus|desktop|Rufus|write bootable USB drives (Windows)|win=winget:Rufus.Rufus|

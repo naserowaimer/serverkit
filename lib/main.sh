@@ -161,6 +161,7 @@ install_item() {
   cask) brew_cask ${arg//,/ } ;;
   flatpak) flatpak_install "$arg" ;;
   npm) npm_install "$arg" ;;
+  uv) uv_install "$arg" ;;
   pkg)
     local p any=false
     $DRY_RUN || pkg_refresh || true # a fresh machine may have no package index yet

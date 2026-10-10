@@ -139,7 +139,7 @@ jobs:
       # CI runners only have an elevated account; on a real PC serverkit runs
       # as you and asks for administrator rights once, via UAC.
       SERVERKIT_SCOOP_AS_ADMIN: "1"
-      ITEMS: essentials ripgrep jq fzf starship pwsh-setup nerd-font windows-terminal windows-tweaks developer-mode long-paths git-defaults
+      ITEMS: essentials ripgrep jq fzf bat fd eza gh delta lazygit btop zoxide neovim gnu-tools pgcli starship pwsh-setup nerd-font windows-terminal windows-tweaks developer-mode long-paths git-defaults
     steps:
       - uses: actions/checkout@v4
       - name: doctor
@@ -170,7 +170,15 @@ jobs:
           if ((Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem').LongPathsEnabled -ne 1) { throw 'long paths not enabled' }
           if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced').HideFileExt -ne 0) { throw 'file extensions still hidden' }
           if (-not (Test-Path "$env:LOCALAPPDATA\Microsoft\Windows Terminal\Fragments\serverkit\serverkit.json")) { throw 'terminal fragment missing' }
-          & "$env:USERPROFILE\scoop\shims\rg.exe" --version
+          # the tools run, from a fresh PATH like a new terminal's
+          $env:Path = [Environment]::GetEnvironmentVariable('Path', 'Machine') + ';' + [Environment]::GetEnvironmentVariable('Path', 'User')
+          foreach ($t in 'rg', 'jq', 'fzf', 'bat', 'fd', 'eza', 'gh', 'delta', 'lazygit', 'zoxide', 'nvim', 'grep', 'sed', 'make', 'pgcli', 'starship') {
+            $c = Get-Command $t -CommandType Application -ErrorAction SilentlyContinue | Select-Object -First 1
+            if (-not $c) { throw "$t is not on PATH" }
+            Write-Host "$t -> $($c.Source)"
+          }
+          & pgcli --version
+          if ($LASTEXITCODE -ne 0) { throw 'pgcli does not run' }
           # the profile loads cleanly in both PowerShell editions
           pwsh -NoLogo -Command "`$Error.Clear(); . '$prof'; if (`$Error.Count) { `$Error; exit 1 }"
           powershell -NoLogo -Command "`$Error.Clear(); . '$prof'; if (`$Error.Count) { `$Error; exit 1 }"

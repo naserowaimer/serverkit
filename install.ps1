@@ -56,7 +56,15 @@ New-Item -ItemType Directory -Path $bin -Force | Out-Null
 Set-Content -LiteralPath (Join-Path $bin 'serverkit.cmd') -Encoding ASCII -Value "@call `"$dest\serverkit.cmd`" %*"
 $userPath = [Environment]::GetEnvironmentVariable('Path', 'User')
 if (-not (($userPath -split ';') -contains $bin)) {
-  [Environment]::SetEnvironmentVariable('Path', (@($userPath, $bin) | Where-Object { $_ }) -join ';', 'User')
+  # Raw read and write: entries like %USERPROFILE%\bin must stay unexpanded.
+  $key = [Microsoft.Win32.Registry]::CurrentUser.OpenSubKey('Environment', $true)
+  try {
+    $raw = "$($key.GetValue('Path', '', [Microsoft.Win32.RegistryValueOptions]::DoNotExpandEnvironmentNames))"
+    $key.SetValue('Path', ((@($raw.TrimEnd(';'), $bin) | Where-Object { $_ }) -join ';'), [Microsoft.Win32.RegistryValueKind]::ExpandString)
+  } finally { $key.Close() }
+  # setting any user variable tells Explorer and new terminals to reload
+  [Environment]::SetEnvironmentVariable('SERVERKIT_PATH_CHANGED', '1', 'User')
+  [Environment]::SetEnvironmentVariable('SERVERKIT_PATH_CHANGED', $null, 'User')
   Say "added $bin to your PATH (new terminals pick it up)"
 }
 $env:Path = "$env:Path;$bin"
