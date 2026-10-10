@@ -1,10 +1,15 @@
 # serverkit
 
 Set up a server, home lab or workstation in one interactive run — safely, on
-almost any Linux and on macOS.
+almost any Linux, on macOS and on Windows.
 
 ```sh
+# Linux / macOS
 curl -fsSL https://raw.githubusercontent.com/naserowaimer/serverkit/main/install.sh | sh
+```
+```powershell
+# Windows (PowerShell, no administrator needed)
+irm https://raw.githubusercontent.com/naserowaimer/serverkit/main/install.ps1 | iex
 ```
 
 It asks what the machine is for, preselects a sensible set of tools, lets you
@@ -53,12 +58,38 @@ About 140 items in 15 groups — run `serverkit list` to see what your machine o
 | openSUSE Leap / Tumbleweed, SLES | zypper | Homebrew |
 | macOS versions Homebrew supports — currently 15 and newer (Apple silicon and Intel) | macOS firewall | Homebrew + casks |
 | Image-based (Silverblue, Bazzite, MicroOS…), other glibc Linux | — | Homebrew + Flathub |
+| Windows 10 / 11, Windows Server 2022+ | winget, Windows features (administrator, one UAC prompt) | Scoop |
 
-**Homebrew is the source of everyday tools on every platform**, so the same
-names and versions land everywhere. The native package manager is used only for
+**Homebrew is the source of everyday tools on Linux and macOS, Scoop on
+Windows** — both install per user, without administrator rights, with mostly
+the same tool names. The native package manager is used only for
 system pieces (firewall, sshd, fail2ban, nginx, Docker Engine). Homebrew never
 runs as root; run serverkit as your normal user and it asks for sudo once, only
 if something needs it.
+
+## Windows
+
+The same catalog, profiles and settings drive a PowerShell version
+(`serverkit.cmd`, Windows PowerShell 5.1 or PowerShell 7). Command-line tools
+come from **Scoop**, desktop apps from **winget**. Windows-specific items:
+
+| Item | What it does |
+|---|---|
+| PowerShell setup | Starship prompt, predictive history (PSReadLine), zoxide, fzf (PSFzf), Terminal-Icons, mise, shortcuts — one marked line in your `profile.ps1` loads it |
+| Windows Terminal setup | Nerd Font + color scheme through a *fragment*: your `settings.json` is never edited |
+| Explorer tweaks | show file extensions and hidden files |
+| Developer Mode, Long paths | symlinks without admin; paths over 260 characters (administrator) |
+| WSL 2 | Linux on Windows; then run the Linux installer inside it |
+| OpenSSH server | SSH into the PC, PowerShell as the shell, firewall rule added |
+| Windows Firewall | makes sure it's on for every network type (rules untouched) |
+| Visual Studio Build Tools | the C/C++ toolchain Rust and native modules need |
+| Automatic app updates | weekly `scoop update *` + `winget upgrade --all` (scheduled task) |
+| Apps | PowerShell 7, Windows Terminal, PowerToys, Everything, ShareX, Notepad++, Sysinternals, plus the cross-platform apps |
+
+Run serverkit from a normal (non-administrator) PowerShell: items that need
+administrator rights run together in one elevated window after a single UAC
+prompt. Scoop needs scripts allowed for your user, so the Scoop item sets the
+execution policy to `RemoteSigned` for your account only (what Scoop documents).
 
 ## Safety — what it will never do
 
@@ -145,6 +176,7 @@ Profiles are plain settings files in `profiles/` — copy one to make your own.
 ```sh
 tests/check.sh --online      # lint, catalog integrity, every package name verified
 bats tests/unit              # unit tests
+Invoke-Pester tests/win      # Windows unit tests (PowerShell 7 or 5.1, any OS)
 tests/distro/run.sh          # 13 distros in containers
 PHASE=full tests/distro/run.sh ubuntu:24.04 fedora:latest   # real installs, twice
 ```

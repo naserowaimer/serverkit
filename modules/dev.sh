@@ -49,6 +49,20 @@ item_claude_code() {
   hint "start Claude Code in any project with: claude"
 }
 
+# Homebrew ships Azure CLI as a macOS cask only; on Linux it's a Python app,
+# installed per user with uv (Microsoft supports pip-style installs).
+item_azure_cli() {
+  brew_install uv || return 1
+  local uv
+  uv="$(brew_prefix)/bin/uv"
+  if grep -q '^azure-cli ' <<<"$(as_user_q "$uv" tool list 2>/dev/null)"; then
+    skip "Azure CLI already installed"
+    return 0
+  fi
+  as_user "$uv" tool install azure-cli || return 1
+  ensure_shell_block localbin 'case ":$PATH:" in *":$HOME/.local/bin:"*) ;; *) export PATH="$HOME/.local/bin:$PATH" ;; esac'
+}
+
 item_psql() {
   brew_install libpq || return 1
   # libpq is keg-only (it would clash with a full PostgreSQL), so add its bin.

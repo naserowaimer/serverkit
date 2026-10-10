@@ -18,6 +18,8 @@ jobs:
       - uses: actions/checkout@v4
       - run: sudo apt-get update -q && sudo apt-get install -y -q shellcheck jq
       - run: tests/check.sh --online
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # winget lookups use the GitHub API
 
   unit:
     name: unit tests
@@ -95,3 +97,86 @@ jobs:
         run: |
           ./serverkit install ripgrep fd jq zsh-setup tmux-config git-defaults gnu-tools rectangle --yes --plain --verbose | tee second.log
           ! grep -E '(created|updated): ' second.log
+
+  windows-lint:
+    name: Windows lint + unit tests
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: PSScriptAnalyzer + Pester (PowerShell 7)
+        shell: pwsh
+        run: |
+          Set-PSRepository PSGallery -InstallationPolicy Trusted
+          Install-Module PSScriptAnalyzer -Scope CurrentUser -Force
+          Install-Module Pester -MinimumVersion 5.5 -Scope CurrentUser -Force -SkipPublisherCheck
+          $s = 'tests/win/PSScriptAnalyzerSettings.psd1'
+          $r = @(Get-ChildItem win -Recurse -Filter *.ps1 | ForEach-Object { Invoke-ScriptAnalyzer -Path $_.FullName -Settings $s })
+          $r += Invoke-ScriptAnalyzer -Path install.ps1 -Settings $s
+          # starship/zoxide/mise hook into PowerShell through Invoke-Expression by design
+          $r += Invoke-ScriptAnalyzer -Path files/win/profile.ps1 -Settings $s -ExcludeRule PSAvoidUsingInvokeExpression
+          $r = @($r | Where-Object { $_ })
+          if ($r.Count) { $r | Format-Table ScriptName, Line, RuleName, Message -AutoSize -Wrap | Out-String -Width 200 | Write-Host; exit 1 }
+          $c = New-PesterConfiguration; $c.Run.Path = 'tests/win'; $c.Run.Exit = $true; $c.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $c
+      - name: Pester (Windows PowerShell 5.1, built into every Windows)
+        shell: powershell
+        run: |
+          Install-PackageProvider -Name NuGet -MinimumVersion 2.8.5.201 -Scope CurrentUser -Force | Out-Null
+          Install-Module Pester -MinimumVersion 5.5 -Scope CurrentUser -Force -SkipPublisherCheck
+          Import-Module Pester -MinimumVersion 5.5
+          $c = New-PesterConfiguration; $c.Run.Path = 'tests/win'; $c.Run.Exit = $true; $c.Output.Verbosity = 'Detailed'
+          Invoke-Pester -Configuration $c
+
+  windows:
+    name: real run on Windows (${{ matrix.os }})
+    needs: [check, windows-lint]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-2025, windows-2022]
+    runs-on: ${{ matrix.os }}
+    env:
+      # CI runners only have an elevated account; on a real PC serverkit runs
+      # as you and asks for administrator rights once, via UAC.
+      SERVERKIT_SCOOP_AS_ADMIN: "1"
+      ITEMS: essentials ripgrep jq fzf starship pwsh-setup nerd-font windows-terminal windows-tweaks developer-mode long-paths git-defaults
+    steps:
+      - uses: actions/checkout@v4
+      - name: doctor
+        shell: cmd
+        run: serverkit.cmd doctor
+      - name: dry run of the desktop profile
+        shell: cmd
+        run: serverkit.cmd apply --profile desktop --dry-run --yes
+      - name: Windows PowerShell 5.1 runs it too
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File win\serverkit.ps1 install ripgrep pwsh-setup windows-terminal --dry-run --yes; exit $LASTEXITCODE
+      - name: real install
+        shell: cmd
+        run: serverkit.cmd install %ITEMS% --yes --plain
+      - name: second run changes nothing
+        shell: pwsh
+        run: |
+          & .\serverkit.cmd install $env:ITEMS.Split(' ') --yes --plain --verbose | Tee-Object second.log
+          if ($LASTEXITCODE -ne 0) { exit 1 }
+          if (Select-String -Path second.log -Pattern '(created|updated): ') { Write-Host 'second run changed files'; exit 1 }
+      - name: results are in place
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not (Test-Path "$env:APPDATA\serverkit\profile.ps1")) { throw 'profile config missing' }
+          $prof = Join-Path ([Environment]::GetFolderPath('MyDocuments')) 'PowerShell\profile.ps1'
+          if (-not (Select-String -Path $prof -SimpleMatch '# >>> serverkit:serverkit >>>')) { throw 'profile block missing' }
+          if ((Get-ItemProperty 'HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem').LongPathsEnabled -ne 1) { throw 'long paths not enabled' }
+          if ((Get-ItemProperty 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced').HideFileExt -ne 0) { throw 'file extensions still hidden' }
+          if (-not (Test-Path "$env:LOCALAPPDATA\Microsoft\Windows Terminal\Fragments\serverkit\serverkit.json")) { throw 'terminal fragment missing' }
+          & "$env:USERPROFILE\scoop\shims\rg.exe" --version
+          # the profile loads cleanly in both PowerShell editions
+          pwsh -NoLogo -Command "`$Error.Clear(); . '$prof'; if (`$Error.Count) { `$Error; exit 1 }"
+          powershell -NoLogo -Command "`$Error.Clear(); . '$prof'; if (`$Error.Count) { `$Error; exit 1 }"
+      - name: a winget app
+        shell: cmd
+        run: serverkit.cmd install winget notepadpp --yes --plain
+      - name: health and status
+        shell: cmd
+        run: serverkit.cmd health && serverkit.cmd status

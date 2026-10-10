@@ -336,9 +336,15 @@ confirm_and_run() {
     printf '  %s\n' "${C_BOLD}Your account${C_RESET} ${C_DIM}(no sudo)${C_RESET}"
     wrap_names "${usr[@]}"
   fi
-  if [[ ${#PLAN_SKIPPED[@]} -gt 0 ]]; then
+  # items a profile names that exist only on another OS aren't news
+  local notes=()
+  for id in "${PLAN_SKIPPED[@]}"; do
+    [[ $FROM_PROFILE == true && ${I_WHY[$id]} == "not offered on"* ]] && continue
+    notes+=("$id")
+  done
+  if [[ ${#notes[@]} -gt 0 ]]; then
     printf '  %s\n' "${C_BOLD}Not possible here${C_RESET}"
-    for id in "${PLAN_SKIPPED[@]}"; do
+    for id in "${notes[@]}"; do
       printf '    %s — %s\n' "${I_NAME[$id]}" "$(item_unavailable_reason "$id" || true)$(item_available "$id" && echo "a dependency can't be installed")"
     done
   fi
@@ -646,7 +652,7 @@ bootstrap_basics() {
 
 # ------------------------------------------------------------------------------
 OPT_PROFILE="" OPT_ONLY="" OPT_SKIP="" OPT_USER="" OPT_CATEGORY=""
-OPT_JSON=false OPT_ALL=false
+OPT_JSON=false OPT_ALL=false FROM_PROFILE=false
 OPT_SET=() ARGS=()
 
 sk_main() {
@@ -714,6 +720,7 @@ sk_main() {
     if [[ ${#ARGS[@]} -gt 0 ]]; then
       sel=("${ARGS[@]}")
     elif [[ -n $PROFILE ]]; then
+      FROM_PROFILE=true
       read -ra sel <<<"$ITEMS"
       if [[ -n $OPT_ONLY ]]; then
         local only=() o

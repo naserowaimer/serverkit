@@ -20,6 +20,10 @@ rather than a public issue. You'll get a reply within a few days.
 | Tailscale, k3s, code-server, rustup, Claude Code | each vendor's official install script | HTTPS; saved to a private temp dir, then run |
 | JetBrains Mono Nerd Font | GitHub release | SHA-256 from the release's `SHA-256.txt` |
 | Flathub apps | `flatpak install --user` | Flatpak's own signature checks |
+| Scoop | official installer from `get.scoop.sh` | HTTPS; Scoop checks each package's hash from its manifest |
+| winget apps | `winget install --exact --id …` | winget verifies installer hashes from its manifests |
+| PowerShell modules (Terminal-Icons, PSFzf) | PowerShell Gallery, current user only | Gallery package signing |
+| gum on Windows | GitHub release, fixed version | SHA-256 stored in `win/lib/ui.ps1` must match |
 | Distro packages | apt / dnf / pacman / zypper | the distro's signing keys |
 
 On openSUSE, a vendor `.repo` is added with `--gpg-auto-import-keys` (trust on
@@ -39,10 +43,22 @@ Only what you select, and only these places:
   `/etc/systemd/system/serverkit-*`, `/etc/serverkit/`, `/usr/local/sbin/serverkit-*` —
   plus `/etc/docker/daemon.json` if absent, and packages/services you chose.
 
-Every file it writes carries `managed-by:serverkit`; a file without that marker
-is never modified (serverkit writes `file.new` beside it instead). Each run's
+Every file it writes carries `managed-by:serverkit` — or, for JSON, which can't
+hold a comment, a checksum recorded when it was written. Any other file (or one
+you've edited since) is never modified; serverkit writes `file.new` beside it. Each run's
 log is in `~/.local/state/serverkit/runs/`, and `serverkit status` lists files
 waiting for your review.
+
+## On Windows
+
+Your files: `%APPDATA%\serverkit\` (config, PowerShell profile config), a marked
+block in `Documents\PowerShell\profile.ps1` and `Documents\WindowsPowerShell\profile.ps1`,
+a Windows Terminal fragment in `%LOCALAPPDATA%\Microsoft\Windows Terminal\Fragments\serverkit\`,
+and `%LOCALAPPDATA%\serverkit\` (logs, gum). With administrator rights, only
+the items you pick: registry values for Developer Mode and long paths, Windows
+features (WSL, OpenSSH Server), and the firewall's on/off state — the only
+rule it ever adds is OpenSSH's inbound TCP 22, when you pick the OpenSSH item.
+The Scoop item sets the execution policy to `RemoteSigned` for your user only.
 
 ## Guarantees against lock-out and outages
 
