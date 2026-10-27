@@ -21,6 +21,18 @@ login_shell_of() {
   else dscl . -read "/Users/$TARGET_USER" UserShell 2>/dev/null | awk '{print $2}'; fi
 }
 
+# The /etc/shells spelling of a shell path. With merged /usr, root's PATH can
+# find /usr/sbin/zsh while /etc/shells lists the same file as /usr/bin/zsh.
+registered_shell() {
+  local real s
+  grep -qx "$1" /etc/shells 2>/dev/null && { printf '%s' "$1"; return; }
+  real=$(readlink -f "$1" 2>/dev/null) || { printf '%s' "$1"; return; }
+  while IFS= read -r s; do
+    [[ $s == /* && -x $s && $(readlink -f "$s" 2>/dev/null) == "$real" ]] && { printf '%s' "$s"; return; }
+  done </etc/shells
+  printf '%s' "$1"
+}
+
 item_zsh_setup() {
   if ! have zsh; then
     [[ $OS == linux ]] && system_supported || { err "zsh is not installed"; return 1; }
@@ -34,7 +46,7 @@ EOF
 
   # Make zsh the login shell — only when it's registered and starts cleanly.
   local zp cur
-  zp=$(command -v zsh)
+  zp=$(registered_shell "$(command -v zsh)")
   cur=$(login_shell_of)
   if [[ $cur == */zsh ]]; then
     skip "login shell is already zsh"

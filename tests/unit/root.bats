@@ -111,3 +111,16 @@ setup() {
   [[ $output == *"install -d -m 0755 -o linuxbrew"* ]]
   [[ $output == *"as the linuxbrew account"* ]]
 }
+
+@test "a shell found through a merged-/usr symlink counts as registered" {
+  d="$BATS_TEST_TMPDIR/usr"
+  mkdir -p "$d/bin"
+  ln -s bin "$d/sbin"
+  printf '#!/bin/sh\n' >"$d/bin/zsh" && chmod +x "$d/bin/zsh"
+  printf '%s\n' "$d/bin/zsh" >"$BATS_TEST_TMPDIR/shells"
+  # point the function at the fake /etc/shells
+  eval "$(declare -f registered_shell | sed "s|/etc/shells|$BATS_TEST_TMPDIR/shells|g")"
+  [ "$(registered_shell "$d/sbin/zsh")" = "$d/bin/zsh" ]
+  [ "$(registered_shell "$d/bin/zsh")" = "$d/bin/zsh" ]
+  [ "$(registered_shell /nonexistent/zsh)" = /nonexistent/zsh ]
+}
