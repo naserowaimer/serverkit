@@ -55,6 +55,22 @@ jobs:
       - if: failure()
         run: cat /tmp/tmp.*/*.log
 
+  # A root-only machine (no sudo, no other account): Homebrew runs as the
+  # hidden linuxbrew account and every tool is set up for root.
+  as-root:
+    name: as root (${{ matrix.image }})
+    needs: check
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        image: [ubuntu:24.04, debian:13, fedora:latest, archlinux:latest]
+    steps:
+      - uses: actions/checkout@v4
+      - run: PHASE=root tests/distro/run.sh "${{ matrix.image }}"
+      - if: failure()
+        run: cat /tmp/tmp.*/*.log
+
   # A real, disposable VM with systemd: every system item runs for real,
   # including firewall, sshd, fail2ban and the timers — then again to prove
   # the second run changes nothing.

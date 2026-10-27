@@ -1,5 +1,12 @@
 # Changelog
 
+## Unreleased
+- Root-only Linux servers: running as root (no `--user`), every item works,
+  Homebrew tools included. brew runs as the owner of `/home/linuxbrew/.linuxbrew`:
+  an existing account, or a hidden `linuxbrew` system account (no login, no
+  password) that serverkit creates. Tools and dotfiles are set up for root.
+  Behaviour for normal users and `--user` is unchanged.
+
 ## 0.1.0 — 2026-10-10
 - Windows installs the tools, not only the setup: every cross-platform
   command-line tool with a Windows build comes from Scoop, Python tools

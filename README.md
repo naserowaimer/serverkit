@@ -67,6 +67,14 @@ system pieces (firewall, sshd, fail2ban, nginx, Docker Engine). Homebrew never
 runs as root; run serverkit as your normal user and it asks for sudo once, only
 if something needs it.
 
+**Root-only servers work too.** Run serverkit as root (no `--user`) on Linux
+and every tool is set up for root. Homebrew itself runs as the account that
+owns `/home/linuxbrew/.linuxbrew`. If nobody does yet, serverkit creates a
+hidden system account, `linuxbrew` (no login shell, no password). If a person's
+account already owns it, Homebrew keeps running as that account and nothing is
+taken over. To use brew yourself as root:
+`cd / && sudo -u linuxbrew -H brew upgrade`.
+
 ## Windows
 
 The same catalog, profiles and settings drive a PowerShell version

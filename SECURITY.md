@@ -43,6 +43,14 @@ Only what you select, and only these places:
   `/etc/nginx/conf.d/00-serverkit-*.conf`, `/etc/apt/apt.conf.d/*serverkit*`,
   `/etc/systemd/system/serverkit-*`, `/etc/serverkit/`, `/usr/local/sbin/serverkit-*` —
   plus `/etc/docker/daemon.json` if absent, and packages/services you chose.
+- **Running as root on Linux:** Homebrew refuses root, so it runs as the owner of
+  `/home/linuxbrew/.linuxbrew`. If nobody owns it yet, serverkit creates a
+  system account, `linuxbrew`: no login shell, a locked password, nothing but
+  that folder. root never writes inside it; root only runs the tools and gets
+  them on its `PATH`. As with any Homebrew owner, whoever controls that account
+  controls programs root runs, which is why it can't log in. If the folder
+  already belongs to a person, serverkit uses their account and creates
+  nothing. If it belongs to root, serverkit refuses.
 
 Every file it writes carries `managed-by:serverkit` — or, for JSON, which can't
 hold a comment, a checksum recorded when it was written. Any other file (or one

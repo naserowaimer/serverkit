@@ -32,7 +32,7 @@ detect() {
   [ "$(by_family debian=a rhel=b default=c)" = c ]
 }
 
-@test "homebrew is refused for root and musl" {
+@test "homebrew is refused for root without a prefix owner, and for musl" {
   detect ubuntu-24.04
   TARGET_USER=root
   ! brew_supported

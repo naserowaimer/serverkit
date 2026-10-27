@@ -64,7 +64,7 @@ _resolve_why() { # id spec -> REPLY = reason it can't install here, or ""
   [[ $1 == homebrew ]] && kind=brew
   case "$kind" in
   brew | cask | npm | uv)
-    brew_supported || REPLY="needs Homebrew, which can't run here$([[ $TARGET_USER == root ]] && echo " as root (use --user NAME)")"
+    brew_supported || REPLY="needs Homebrew — $(brew_unsupported_reason)"
     ;;
   flatpak) have flatpak || system_supported || REPLY="needs Flatpak" ;;
   sys | pkg)

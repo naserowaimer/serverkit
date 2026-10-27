@@ -116,15 +116,38 @@ as_root() {
   if is_root; then run_cmd "$@"; else run_cmd sudo "$@"; fi
 }
 
+# _as_account run|q USER HOME CMD... — root running a command as another
+# account (no shell involved, so accounts without a login shell work too).
+_as_account() {
+  local mode=$1 u=$2 h=$3 pre
+  shift 3
+  if have sudo; then
+    pre=(sudo -u "$u" -H)
+  else # minimal systems ship without sudo; runuser is part of util-linux
+    pre=(runuser -u "$u" -- env HOME="$h")
+  fi
+  if [[ $mode == run ]]; then run_cmd "${pre[@]}" "$@"; else "${pre[@]}" "$@"; fi
+}
+
 # as_user CMD... — run as the person being set up (never root when avoidable).
-# Homebrew refuses to run as root, and dotfiles must be owned by their user.
+# Dotfiles must be owned by their user.
 as_user() {
   if ! is_root || [[ $TARGET_USER == root ]]; then
     run_cmd "$@"
-  elif have sudo; then
-    run_cmd sudo -u "$TARGET_USER" -H "$@"
-  else # minimal systems ship without sudo; runuser is part of util-linux
-    run_cmd runuser -u "$TARGET_USER" -- env HOME="$TARGET_HOME" "$@"
+  else
+    _as_account run "$TARGET_USER" "$TARGET_HOME" "$@"
+  fi
+}
+
+# as_brew CMD... — Homebrew refuses root. Normally it runs as the target user;
+# when serverkit runs as root on Linux it runs as the account that owns the
+# Homebrew prefix (BREW_OWNER, see lib/brew.sh), from / since that account
+# can't read root's working directory.
+as_brew() {
+  if [[ -z $BREW_OWNER ]]; then
+    as_user "$@"
+  else
+    (cd / && _as_account run "$BREW_OWNER" "$BREW_OWNER_HOME" "$@")
   fi
 }
 
@@ -137,8 +160,11 @@ as_root_q() {
 }
 as_user_q() {
   if ! is_root || [[ $TARGET_USER == root ]]; then "$@"
-  elif have sudo; then sudo -u "$TARGET_USER" -H "$@"
-  else runuser -u "$TARGET_USER" -- env HOME="$TARGET_HOME" "$@"; fi
+  else _as_account q "$TARGET_USER" "$TARGET_HOME" "$@"; fi
+}
+as_brew_q() {
+  if [[ -z $BREW_OWNER ]]; then as_user_q "$@"
+  else (cd / && _as_account q "$BREW_OWNER" "$BREW_OWNER_HOME" "$@"); fi
 }
 
 can_sudo() { is_root || sudo -n true 2>/dev/null; }
@@ -198,7 +224,12 @@ run_script() {
     return 1
   }
   chmod 0755 "$f"
-  if is_root && [[ $who == as_user && $TARGET_USER != root ]]; then chown "$TARGET_USER" "$f"; fi
+  if is_root; then # the installer must be readable by the account that runs it
+    case $who in
+    as_user) [[ $TARGET_USER == root ]] || chown "$TARGET_USER" "$f" ;;
+    as_brew) [[ -z ${BREW_OWNER:-} && $TARGET_USER == root ]] || chown "${BREW_OWNER:-$TARGET_USER}" "$f" ;;
+    esac
+  fi
   local envs=() args=()
   while [[ $# -gt 0 && $1 != -- ]]; do
     envs+=("$1")
