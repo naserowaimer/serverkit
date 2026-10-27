@@ -142,10 +142,18 @@ system_supported() {
 }
 
 # Homebrew runs on macOS and on glibc Linux (x86_64, arm64), never as root.
-brew_supported() {
-  [[ $TARGET_USER != root ]] || return 1
-  [[ $OS == mac ]] && return 0
-  [[ $IS_MUSL == false && ($ARCH == amd64 || $ARCH == arm64) ]]
+# As root on Linux it runs as the prefix's owner account (see lib/brew.sh).
+brew_supported() { [[ -z $(brew_unsupported_reason) ]]; }
+brew_unsupported_reason() {
+  if [[ $OS == mac ]]; then
+    [[ $TARGET_USER != root ]] || echo "Homebrew can't run as root on macOS (use --user NAME)"
+    return 0
+  fi
+  if [[ $IS_MUSL == true || ($ARCH != amd64 && $ARCH != arm64) ]]; then
+    echo "Homebrew needs glibc Linux on x86_64 or arm64"
+  elif [[ $TARGET_USER == root && -z $BREW_OWNER ]]; then
+    echo "Homebrew can't run as root here: ${BREW_OWNER_WHY:-unknown reason} (use --user NAME)"
+  fi
 }
 
 platform_line() {

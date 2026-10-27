@@ -125,6 +125,7 @@ init_context() {
   STATE_DIR="$TARGET_HOME/.local/state/serverkit"
   CONFIG_DIR="$TARGET_HOME/.config/serverkit"
   SK_DATA="$TARGET_HOME/.local/share/serverkit"
+  brew_owner_detect
   catalog_load
   catalog_resolve
 }
@@ -373,7 +374,11 @@ wizard() {
   fi
   local want_admin=""
   if [[ $TARGET_USER == root ]]; then
-    ui_note "Running as root: most tools come from Homebrew, which needs a normal user account."
+    if [[ -n $BREW_OWNER ]]; then
+      ui_note "Running as root: tools are set up for root; Homebrew itself runs as the '$BREW_OWNER' account$([[ $BREW_OWNER == linuxbrew ]] && echo " (hidden, no login)")."
+    else
+      ui_note "Running as root: $(brew_unsupported_reason)."
+    fi
     if [[ $OS == linux ]] && system_supported && ui_confirm "Create an admin (sudo) user now, with root's SSH keys?" yes; then
       local name
       name=$(ui_input "Name for the new admin user" "" "e.g. ada")
@@ -557,7 +562,12 @@ cmd_doctor() {
   printf '  %-18s %s\n' platform "$(platform_line)" family "$FAMILY" "package manager" "$PM" \
     user "$TARGET_USER ($TARGET_HOME)" bash "$BASH_VERSION"
   printf '  %-18s %s\n' "system items" "$(system_supported && echo yes || echo "no — $DISTRO_NAME isn't a supported family or is image-based")"
-  printf '  %-18s %s\n' "Homebrew" "$(brew_supported && { brew_find && echo "yes: $BREW" || echo "supported, not installed yet"; } || echo "no — $([[ $TARGET_USER == root ]] && echo "running as root" || echo "unsupported CPU/libc")")"
+  local brew_state
+  if ! brew_supported; then brew_state="no — $(brew_unsupported_reason)"
+  elif brew_find; then brew_state="yes: $BREW"
+  else brew_state="supported, not installed yet"; fi
+  [[ -n $BREW_OWNER ]] && brew_supported && brew_state+=" (runs as the $BREW_OWNER account)"
+  printf '  %-18s %s\n' "Homebrew" "$brew_state"
   printf '  %-18s %s\n' "sudo" "$(is_root && echo "running as root" || { can_sudo && echo "yes (cached)" || { have sudo && echo "will ask for your password" || echo "not installed"; }; })"
   printf '  %-18s %s\n' "systemd" "$($HAS_SYSTEMD && echo yes || echo "no — service items will be skipped")"
   printf '  %-18s %s\n' "terminal UI" "$UI$([[ $UI == gum ]] && echo " ($GUM)")"
