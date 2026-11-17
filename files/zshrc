@@ -15,6 +15,15 @@ export EDITOR=${EDITOR:-$(command -v nvim || command -v vim || echo vi)}
 export VISUAL=$EDITOR
 export LESS='-R -F -X'
 
+# ---------- locale ----------
+# macOS Terminal sends LC_CTYPE=UTF-8 over SSH. Linux has no such locale, so
+# perl (and apt with it) warns "Setting locale failed" on every run. Swap in a
+# real one, before tmux starts and inherits it.
+if [[ $OSTYPE == linux* && $LC_CTYPE == UTF-8 ]]; then
+  if locale -a 2>/dev/null | grep -qix 'en_US.utf-\{0,1\}8'; then export LC_CTYPE=en_US.UTF-8
+  else export LC_CTYPE=C.UTF-8; fi
+fi
+
 # ---------- SSH auto-tmux + banner (serverkit item: ssh-autotmux) ----------
 # Early, so tmux takes over before the slower setup below runs.
 [[ -f $HOME/.config/serverkit/login.zsh ]] && . "$HOME/.config/serverkit/login.zsh"

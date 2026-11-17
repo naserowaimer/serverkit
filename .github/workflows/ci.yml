@@ -58,6 +58,16 @@ jobs:
   # A real, disposable VM with systemd: every system item runs for real,
   # including firewall, sshd, fail2ban and the timers — then again to prove
   # the second run changes nothing.
+  tmux-live:
+    name: tmux-config on a running tmux server
+    needs: check
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - run: PHASE=tmux tests/distro/run.sh ubuntu:24.04
+      - if: failure()
+        run: cat /tmp/tmp.*/*.log
+
   vm-ubuntu:
     name: real run on an Ubuntu VM
     needs: check

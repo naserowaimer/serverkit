@@ -357,27 +357,44 @@ restore_file() { # path
   fi
 }
 
-# ensure_block FILE ID < content
+# ensure_block FILE ID [ANCHOR] < content
 # Keeps one marked block inside a file the person owns (e.g. ~/.zshrc), so we
 # can add a line without owning the whole file. Re-running replaces the block
 # in place; everything outside it is left exactly as it was.
+# With ANCHOR (an awk regex), the block must come before the first line that
+# matches it: a new block goes at the top of the file, so everything you wrote
+# overrides it, and a block found below that line moves to the top.
 ensure_block() {
-  local file="$1" id="$2" body begin end cur new o
+  local file="$1" id="$2" anchor="${3:-}" body begin end cur new o base
   body=$(cat)
   begin="# >>> serverkit:$id >>>"
   end="# <<< serverkit:$id <<<"
   o=$(_owner_of_path "$file")
   cur=""
   [[ -e $file ]] && cur=$(_read "$file")
-  if [[ $cur == *"$begin"* ]]; then
+  base="$cur"
+  if [[ -n $anchor && $cur == *"$begin"* ]]; then
+    local bl al
+    bl=$(printf '%s\n' "$cur" | awk -v b="$begin" '$0 == b { print NR; exit }')
+    al=$(printf '%s\n' "$cur" | awk -v re="$anchor" '$0 ~ re { print NR; exit }')
+    if [[ -n $al && $bl -gt $al ]]; then
+      base=$(printf '%s\n' "$cur" | awk -v b="$begin" -v e="$end" '
+        $0 == b { skipping = 1; next }
+        skipping && $0 == e { skipping = 0; next }
+        !skipping { print }')
+    fi
+  fi
+  if [[ $base == *"$begin"* ]]; then
     # body via ENVIRON: awk -v would interpret backslashes in it
-    new=$(printf '%s\n' "$cur" | SK_BODY="$body" awk -v b="$begin" -v e="$end" '
+    new=$(printf '%s\n' "$base" | SK_BODY="$body" awk -v b="$begin" -v e="$end" '
       $0 == b { print; print ENVIRON["SK_BODY"]; skipping = 1; next }
       $0 == e { skipping = 0 }
       !skipping { print }')
+  elif [[ -n $anchor && -n $base ]]; then
+    new="$begin"$'\n'"$body"$'\n'"$end"$'\n'"$base"
   else
-    new="$cur"
-    [[ -n $cur ]] && new+=$'\n'
+    new="$base"
+    [[ -n $base ]] && new+=$'\n'
     new+="$begin"$'\n'"$body"$'\n'"$end"
   fi
   if [[ $new == "$cur" ]]; then

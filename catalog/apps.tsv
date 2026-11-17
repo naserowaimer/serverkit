@@ -87,7 +87,7 @@ kind|containers|kind|local Kubernetes clusters in Docker|all=brew:kind win=scoop
 openssh-server|remote|OpenSSH server|SSH into this PC, with PowerShell as the shell|win=psadmin:openssh_server|
 tailscale|remote|Tailscale|private mesh VPN; reach this machine from anywhere|linux=sys:tailscale mac=cask:tailscale-app win=winget:Tailscale.Tailscale|
 cloudflared|remote|Cloudflare Tunnel|publish web apps with no open ports|linux=sys:cloudflared mac=brew:cloudflared win=scoop:cloudflared|
-code-server|remote|code-server|VS Code in the browser, bound to localhost|linux=sys:code_server|
+code-server|remote|code-server|VS Code in the browser: localhost, plus HTTPS on your tailnet only|linux=sys:code_server|
 mosh|remote|mosh|SSH that survives sleep and roaming|linux=pkg:mosh mac=brew:mosh amzn=none:unpackaged|
 wireguard|remote|WireGuard tools|wg and wg-quick|linux=pkg:wireguard-tools mac=brew:wireguard-tools win=winget:WireGuard.WireGuard|
 mtr|remote|mtr|traceroute and ping in one|debian=pkg:mtr-tiny rhel=pkg:mtr arch=pkg:mtr suse=pkg:mtr mac=brew:mtr win=scoop:extras/winmtr|
@@ -124,7 +124,7 @@ pwsh-setup|shell|PowerShell setup|prompt, predictive history, zoxide, fzf, icons
 nerd-font|shell|JetBrains Mono Nerd Font|programming font with icons|mac=cask:font-jetbrains-mono-nerd-font linux=fn:nerd_font win=scoop:nerd-fonts/JetBrainsMono-NF|
 windows-terminal|shell|Windows Terminal setup|Nerd Font and color scheme via a fragment; your settings.json is untouched|win=ps:windows_terminal|nerd-font
 zsh-setup|shell|Zsh setup|autosuggestions, syntax highlighting, completions, history|all=fn:zsh_setup|homebrew,starship
-tmux-config|shell|tmux + config|vim copy mode, clipboard over SSH, fuzzy scrollback|all=fn:tmux_config|homebrew
+tmux-config|shell|tmux + config|vim copy mode, clipboard over SSH, sessions saved and restored|all=fn:tmux_config|homebrew
 ssh-autotmux|shell|SSH auto-tmux + banner|every SSH login lands in tmux, with escape hatches|all=fn:login_banner|zsh-setup,tmux-config
 lazyvim|shell|Neovim + LazyVim|modern Neovim setup (never replaces an existing config)|all=fn:lazyvim win=ps:lazyvim|homebrew
 git-defaults|shell|Git defaults|main branch, rebase on pull, delta diffs — keeps your settings|all=fn:git_defaults win=ps:git_defaults|

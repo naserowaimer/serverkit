@@ -73,11 +73,11 @@ WantedBy=multi-user.target
 EOF
     daemon_reload
   fi
-  local cfg="$TARGET_HOME/.config/code-server/config.yaml"
+  local cfg="$TARGET_HOME/.config/code-server/config.yaml" bind port
   if [[ -e $cfg ]]; then
     skip "code-server config exists — untouched"
   else
-    # bound to localhost: reach it through an SSH tunnel, Tailscale, or a Cloudflare tunnel with Access
+    # bound to localhost: reach it through Tailscale, an SSH tunnel, or a Cloudflare tunnel with Access
     safe_write "$cfg" 0600 <<EOF
 # $MARKER
 bind-addr: 127.0.0.1:$CODE_SERVER_PORT
@@ -87,5 +87,52 @@ cert: false
 EOF
   fi
   svc_enable "code-server@$TARGET_USER" || return 1
-  hint "code-server: ssh -L $CODE_SERVER_PORT:localhost:$CODE_SERVER_PORT $TARGET_USER@<this-host>, open http://localhost:$CODE_SERVER_PORT — password in $cfg"
+  bind=$(_read "$cfg" 2>/dev/null | sed -n 's/^bind-addr:[[:space:]]*//p' | tr -d "\"'" | head -n 1)
+  bind=${bind:-127.0.0.1:$CODE_SERVER_PORT}
+  port=${bind##*:}
+  case ${bind%:*} in
+  127.0.0.1 | localhost | "[::1]" | ::1) ;;
+  *) warn "code-server listens on $bind: anyone who can reach this machine gets its login page. Set bind-addr: 127.0.0.1:$port in $cfg" ;;
+  esac
+  code_server_tailnet "$port" ||
+    hint "code-server: ssh -L $port:localhost:$port $TARGET_USER@<this-host>, open http://localhost:$port — password in $cfg"
+}
+
+# HTTPS for code-server on your tailnet only (tailscale serve; never funnel,
+# never a public domain). Fails quietly when Tailscale can't do it yet.
+code_server_tailnet() {
+  local port=$1 https=$CODE_SERVER_TAILNET_PORT st host cur target
+  target="http://127.0.0.1:$port"
+  [[ $https != off ]] || return 1
+  if ! have tailscale || ! st=$(tailscale status --json 2>/dev/null) || ! grep -q '"BackendState": *"Running"' <<<"$st"; then
+    hint "once Tailscale is connected, re-run: serverkit install code-server  (it then serves code-server to your tailnet only)"
+    return 1
+  fi
+  # tailnet HTTPS certificates are off until the admin turns them on
+  host=$(tr -d ' \n' <<<"$st" | sed -n 's/.*"CertDomains":\["\([^"]*\)".*/\1/p')
+  if [[ -z $host ]]; then
+    hint "turn on HTTPS certificates in the Tailscale admin console (DNS page), then re-run: serverkit install code-server"
+    return 1
+  fi
+  # what this HTTPS port already proxies to, if anything
+  local serve
+  serve=$(tailscale serve status --json 2>/dev/null) || serve=$(as_root_q tailscale serve status --json 2>/dev/null) || {
+    warn "couldn't read Tailscale's serve settings — code-server was not put on your tailnet"
+    return 1
+  }
+  cur=$(printf '%s\n' "$serve" | awk -v k=":$https\": {" '
+    index($0, k) { inport = 1; next }
+    inport && /"Proxy"/ { gsub(/.*"Proxy": *"|".*/, ""); print; exit }
+    inport && /^    "[^"]*": \{/ { inport = 0 }')
+  if [[ $cur == "$target" ]]; then
+    skip "code-server is on your tailnet: https://$host:$https"
+  elif [[ -n $cur ]] || grep -q "\"$https\": {" <<<"$serve"; then
+    warn "tailnet port $https already serves ${cur:-something else} — left alone. Pick another: serverkit install code-server --set CODE_SERVER_TAILNET_PORT=8448"
+    return 1
+  else
+    as_root tailscale serve --bg --https="$https" "$target" || return 1
+    ok "code-server is on your tailnet only: https://$host:$https"
+  fi
+  hint "code-server password: in $TARGET_HOME/.config/code-server/config.yaml"
+  return 0
 }

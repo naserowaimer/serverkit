@@ -36,12 +36,12 @@ About 170 items in 15 groups — run `serverkit list` to see what your machine o
 |---|---|
 | Security | firewall (ufw / firewalld / macOS), SSH hardening, fail2ban, automatic security updates, kernel hardening, per-user resource caps |
 | Containers | Docker Engine + Compose (Colima on macOS), Podman, k3s, kubectl, Helm, k9s |
-| Remote access | Tailscale, Cloudflare Tunnel, code-server, mosh, WireGuard |
+| Remote access | Tailscale, Cloudflare Tunnel, code-server (on your tailnet), mosh, WireGuard |
 | Web hosting | nginx with a safe catch-all |
 | Storage | disk health (SMART + RAID), ZFS snapshots & scrub, restic backups, rclone |
 | Users | team group, per-user directories, `serverkit-adduser` |
 | Languages | mise (Node, Python, Go), Rust, uv, Bun, Deno, pnpm |
-| Shell | zsh setup, Starship, tmux config, SSH auto-tmux, LazyVim, Nerd Font, atuin, zoxide |
+| Shell | zsh setup, Starship, tmux config (sessions saved and restored), SSH auto-tmux, LazyVim, Nerd Font, atuin, zoxide |
 | CLI essentials | ripgrep, fd, bat, fzf, eza, jq, btop, lazygit, delta, Neovim, GNU tools, … |
 | Dev & cloud | GitHub/GitLab CLIs, pre-commit, AWS/Azure/GCP CLIs, OpenTofu, Ansible |
 | Databases | psql, pgcli, mycli, litecli, sqlite (clients only) |

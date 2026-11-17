@@ -76,10 +76,46 @@ item_mac_firewall() {
 }
 
 # ------------------------------------------------------------------------------
+# Read-only sshd config lint. Prints one line per problem, fixes nothing.
+#  - a commented-out `#Match` whose indented lines are still live: sshd then
+#    applies them to everyone (seen in the wild: AllowTcpForwarding no for all,
+#    which makes VS Code Remote-SSH hang).
+sshd_lint() { # [files...]
+  local f
+  (($#)) || set -- /etc/ssh/sshd_config /etc/ssh/sshd_config.d/*.conf
+  for f in "$@"; do
+    [[ -f $f ]] || continue
+    _read "$f" | awk -v f="$f" '
+      function trim(s) { gsub(/^[[:space:]]+|[[:space:]]+$/, "", s); return s }
+      /^[[:space:]]*#[[:space:]]*Match([[:space:]]|$)/ { c = FNR; m[c] = trim($0); next }
+      /^[[:space:]]*Match([[:space:]]|$)/ { c = 0; next }
+      c && /^[[:space:]]+[^#[:space:]]/ { if (!n[c]++) first[c] = trim($0); next }
+      /^[^#[:space:]]/ { c = 0 }
+      END {
+        for (k in n) printf "%s:%d: \"%s\" is commented out, but the %d indented line(s) under it are not (\"%s\"...): sshd applies them to every user\n", f, k, m[k], n[k], first[k]
+      }'
+  done
+}
+
+# Warn (never fix) about sshd settings that would surprise the admin.
+sshd_check() {
+  local p
+  while IFS= read -r p; do
+    [[ -n $p ]] && warn "$p"
+  done <<<"$(sshd_lint)"
+  if [[ $TARGET_USER != root ]] && can_sudo &&
+    grep -qx 'allowtcpforwarding no' <<<"$(as_root_q sshd -T -C "user=$TARGET_USER,host=localhost,addr=127.0.0.1" 2>/dev/null)"; then
+    warn "sshd turns TCP forwarding off for $TARGET_USER: VS Code Remote-SSH and ssh -L tunnels won't work"
+    hint "VS Code can still connect if you set \"remote.SSH.remoteServerListenOnSocket\": true in its settings"
+  fi
+  return 0
+}
+
 item_ssh_hardening() {
   local sshd main=/etc/ssh/sshd_config
   sshd=$(command -v sshd || echo /usr/sbin/sshd)
   [[ -x $sshd ]] || { na "no SSH server installed"; return; }
+  sshd_check
   if ! grep -qiE '^[[:space:]]*Include[[:space:]]+/etc/ssh/sshd_config\.d/\*\.conf' <<<"$(_read "$main")"; then
     warn "$main doesn't include /etc/ssh/sshd_config.d — your main config is not edited"
     hint "add 'Include /etc/ssh/sshd_config.d/*.conf' as the first line of $main, then re-run: serverkit install ssh-hardening"
