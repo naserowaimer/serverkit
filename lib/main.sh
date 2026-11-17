@@ -602,6 +602,20 @@ cmd_health() {
       [[ -e /var/run/reboot-required ]] && { _h reboot; echo "  a reboot is required (updates installed)"; }
     fi
   fi
+  if [[ $OS == linux && -f /etc/ssh/sshd_config ]]; then
+    _h "sshd config"
+    local lint
+    lint=$(sshd_lint)
+    if [[ -n $lint ]]; then sed 's/^/  ! /' <<<"$lint"; else echo "  no problems found"; fi
+  fi
+  if tmux_running; then
+    _h tmux
+    local last
+    last=$(tmux_resurrect_dir)/last
+    printf '  %-14s %s\n' sessions "$(as_user_q tmux list-sessions 2>/dev/null | wc -l | tr -d ' ')" \
+      autosave "$(tmux_autosave_on && echo on || echo "off — nothing will be restored after a reboot")" \
+      "last save" "$([[ -e $last ]] && date -r "$last" '+%Y-%m-%d %H:%M' 2>/dev/null || echo never)"
+  fi
   have docker && docker ps >/dev/null 2>&1 && { _h containers; docker ps --format 'table {{.Names}}\t{{.Status}}'; }
   return 0
 }

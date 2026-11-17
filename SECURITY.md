@@ -18,6 +18,7 @@ rather than a public issue. You'll get a reply within a few days.
 | Docker Engine | Docker's apt/rpm repositories | vendor signing key (apt `signed-by`, rpm gpgcheck) |
 | cloudflared | Cloudflare's apt/rpm repositories | vendor signing key |
 | Tailscale, k3s, code-server, rustup, Claude Code | each vendor's official install script | HTTPS; saved to a private temp dir, then run |
+| tmux plugins (tpm, tmux-resurrect, tmux-continuum), LazyVim starter | `git clone --depth 1` from GitHub over HTTPS, as you | HTTPS; latest commit, not pinned |
 | JetBrains Mono Nerd Font | GitHub release | SHA-256 from the release's `SHA-256.txt` |
 | Flathub apps | `flatpak install --user` | Flatpak's own signature checks |
 | Python tools (pgcli, aider, …) | `uv tool install` from PyPI, each in its own environment, as you | HTTPS; PyPI |
@@ -37,7 +38,9 @@ Only what you select, and only these places:
 
 - **Your home:** `~/.config/serverkit/` (its config), marked blocks in
   `~/.zshrc`, `~/.bashrc`/`~/.bash_profile`, `~/.zprofile`, `~/.tmux.conf`;
-  `~/.local/state/serverkit/` (logs); `~/.local/share/serverkit/` (gum).
+  `~/.local/state/serverkit/` (logs); `~/.local/share/serverkit/` (gum);
+  tmux plugins in `~/.tmux/plugins/` and their saves in
+  `~/.local/share/tmux/resurrect/` (mode 700: saved screen text can hold secrets).
 - **System (with sudo):** files it names `serverkit` — `/etc/ssh/sshd_config.d/10-serverkit.conf`,
   `/etc/fail2ban/jail.d/serverkit.local`, `/etc/sysctl.d/60-serverkit-hardening.conf`,
   `/etc/nginx/conf.d/00-serverkit-*.conf`, `/etc/apt/apt.conf.d/*serverkit*`,
@@ -71,5 +74,8 @@ The Scoop item sets the execution policy to `RemoteSigned` for your user only.
 - SSH password login is only disabled when you ask and your user has an
   authorized key; `PermitRootLogin prohibit-password` only when root has a key
   or you're a sudoer.
-- Docker's daemon is not restarted while containers run.
+- Docker's daemon is not restarted while containers run, and a running tmux
+  server is never restarted (plugins are loaded into it live).
+- code-server is never bound beyond localhost by serverkit, and only reaches
+  other machines through `tailscale serve` (your tailnet, never funnel).
 - The `docker` group is root-equivalent; serverkit says so when it adds you.
